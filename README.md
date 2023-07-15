@@ -47,8 +47,58 @@ https://wiki.ros.org/Distributions
 
 ## آشنایی با دستورات ابتدایی لینوکس
 
-در این بخش قصد داریم تا برخی از دستورات (command) معروف سیستم عامل لینوکس را با هم مرور کنیم. این دستورات در محیط ترمنیال (Terminal) لینوکس استفاده می شود و تا حدود زیادی کار ما را در محیط لینوکس راحت می کند. در بخش زیر می توانید لیست این کامند ها را با توضیحات مربوطه ببینید:
+در این بخش قصد داریم تا برخی از دستورات (command) معروف سیستم عامل لینوکس را با هم مرور کنیم. این دستورات در محیط ترمنیال (Terminal) لینوکس استفاده می شود و تا حدود زیادی کار ما را در محیط لینوکس راحت می کند. در بخش زیر می توانید لیست این کامند ها را با توضیحات مربوطه مرور نمایید:
 
 ```bash
-ping [ip/address] -c [number-of-packets] # Sending ping packets to a ip or address
+# Sending ping packets to a ip or address
+$ ping [ip/address] -c [number-of-packets]
+
+# Open Manual of a linux command
+$ man [command-name]
+
+# List the recent directory files and dirs
+$ ls
+
+# Navigate to a dir
+$ cd [directory-name]
+
+# Show the active directory address from root
+$ pwd
+
+# Create a directory
+$ mkdir [dir-name]
+
+# Create a file
+$ touch [file-name]
+
+# Open a file with editor
+$ nano/gedit/code [file-name]
+
+# Remove a file
+$ rm [file-name]
+
+# Remove a dir
+$ rm -r [dir-name]
+#or
+$ rmdir [dir-name]
+
+# Dir tree
+$ tree # install: sudo apt-get install tree
+
+# Copy files
+$ cp [file-name] [goal-dir] [new-name]
+
+# Move files
+$ mv [file-name] [goal-dir] [new-name]
+
+# Add Executability to a file
+$ chmod +x [file-name]
+
+# Shut down
+$ poweroff
+
+# Restart
+$ reboot
 ```
+
+توجه شود که در ترمینال منظور از ~ شاخه Home و منظور از / شاخه root می باشد.
