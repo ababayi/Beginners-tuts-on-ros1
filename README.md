@@ -343,3 +343,241 @@ $ rostopic hz [topic-name]
 ```bash
 $ rosrun rqt_plot rqt_plot
 ```
+
+در ادامه به نحوه ایجاد دو عدد گره برای تبادل پیام در بستر یک تاپیک می پردازیم. ابتدا این نودها را با کمک سی پلاس پلاس ایجاد می کنیم و سپس به سراغ پایتون می رویم. برای ایجاد یک تاپیک کافی است به پکیج خود و در پوشه src بروید و یک فایل ایجاد کنید، برای مثال می خواهیم دو نود ایجاد کنیم، یک نود فرستنده و یک نود دریافت کنند که با یک تاپیک با هم در ارتباط هستند. در ابتدا با کمک کامند زیر به پوشه پکیج خود بروید:
+
+```bash
+$ roscd beginner_tutorials
+```
+
+سپس به پوشه src بروید و با کمک کامند زیر نود مربوط به فرستنده (talker) ایجاد نمایید. در ابتدا در سی پلاس پلاس را توضیح می دهیم سپس به سراغ نوع پایتونی می رویم:
+
+```bash
+$ cd src
+$ touch talker.cpp
+```
+
+اکنون در داخل فایل ایجاد شده کد زیر را قرار می دهیم (در کامنت های کد زیر، توضیحات خلاصه و البته کافی داده شده است):
+
+```c++
+// Adding ROS Libs to our cpp code
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include <sstream>
+
+// cpp main loop
+int main(int argc, char \*\*argv)
+{
+// create a node with the name of "talker"
+ros::init(argc, argv, "talker");
+
+// creat a class for calling node (n)
+ros::NodeHandle n;
+
+// create a publisher-topic with the name of chatter (the topic name is chatter)
+ros::Publisher chatter_pub = n.advertise<std_msgs::String>("chatter", 1000); // 1000 msg available
+ros::Rate loop_rate(10); // 100ms delay
+
+int count = 0;
+while (ros::ok()) // when roscore is ok!
+{
+
+    // create msg and add it to class
+    std_msgs::String msg;
+    std::stringstream ss;
+
+    // print hello world as msg
+    ss << "hello world " << count;
+
+    // log the msg in terminal
+    msg.data = ss.str();
+    ROS_INFO("%s", msg.data.c_str());
+
+    // publishing the created msg
+    chatter_pub.publish(msg);
+
+    // re-match with roscore
+    ros::spinOnce();
+    loop_rate.sleep(); // 100ms delay
+    ++count;
+
+}
+
+return 0;
+}
+```
+
+برای مشاهده این مثال در داکیومت راس به لینک زیر مراجعه نمایید:
+
+http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29
+
+حال که برنامه فرستنده یا همان پابلیشر (talker.cpp) ایجاد شد به سراغ ایجاد برنامه دریافت کنند یا همان سابسکرایبر (listener.cpp) می رویم. با کمک کامند زیر آنرا ایجاد کنید:
+
+```bash
+$ touch listener.cpp
+```
+
+و سپس درون آن کدهای زیر را قرار دهید:
+
+```c++
+// libs
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+
+// call-back function for receive data
+void chatterCallback(const std_msgs::String::ConstPtr& msg) // Input: String
+{
+  ROS_INFO("I heard: [%s]", msg->data.c_str()); // log received data in terminal
+}
+
+
+int main(int argc, char **argv)
+{
+
+  // create a node with the name of "listener"
+  ros::init(argc, argv, "listener");
+  ros::NodeHandle n;
+
+  // create a subscriber-topic with the name of chatter (the topic name is chatter)
+  ros::Subscriber sub = n.subscribe("chatter", 1000, chatterCallback); // listen to topic with name of chatter
+  ros::spin(); // re-match with ros core
+
+  return 0;
+}
+```
+
+حال برای کامپایل کردن ابتدا باید تغییرات لازم را در فایل CMakeList ایجاد کنیم. باید دو فایل talker.cpp و listener.cpp را به عنوان دو فایلی که قرار است کامپایل شوند معرفی کنیم. دو کد زیر را در بخش build قرار دهید:
+
+```c
+add_executable(talker src/talker.cpp)
+target_link_libraries(talker ${catkin_LIBRARIES})
+add_dependencies(talker beginner_tutorials_generate_messages_cpp)
+
+add_executable(listener src/listener.cpp)
+target_link_libraries(listener ${catkin_LIBRARIES})
+add_dependencies(listener beginner_tutorials_generate_messages_cpp)
+```
+
+البته تفاوتی نمی کند کجا فایل قرار گرفته باشد 😂
+
+توجه کنید اگر از ورژن ملودیک و نئوتیک راس استفاده میکنید دو خط زیر را قرار دهید:
+
+```c
+add_executable(talker src/talker.cpp)
+target_link_libraries(talker ${catkin_LIBRARIES})
+
+
+add_executable(listener src/listener.cpp)
+target_link_libraries(listener ${catkin_LIBRARIES})
+```
+
+حال به شاخه اصلی بروید و با catkin_make برنامه را کامپایل نمایید و با کمک دستور rosrun نود های نوشته شده را اجرا نمایید:
+
+```bash
+$ cd ..
+$ catkin_make
+$ roscore
+$ rosrun beginner_tuts listener
+$ rosrun beginner_tuts talker
+```
+
+اکنون اجرا شدن برنامه را مشاهده خواهید کرد، فراموش نکته هسته راس را روشن نمایید. همچنین اگر در کد سی پلاس پلاس تغییری کردید مجدد کامپلایل نمایید (با کنترل اس، تغییرات اعمال نمیشه 😂) برای مشاهده جزئیات بیشتر می توانید به لینک زیر در داکیومنت خود راس مراجعه نمایید:
+
+http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29
+
+ایجاد همین پابلیشر سابسکرایبر در پایتون بسیار راحت تر می باشد، چراکه نیاز به کامپایل ندارد و برنامه های پایتون به صورت آنلاین (چون مفسریند) اجرا می شود. یک پوشه تحت عنوان scripts در دایرکتوری اصلی پکیج beginner_tuts ایجاد کنید و دو فایل پایتونی با نام های talker.py و listener.py ایجاد کنید:
+
+```bash
+$ roscd beginner_tuts
+$ mkdir scripts
+$ cd scripts
+$ touch talker.py listener.py
+```
+
+اکنون کد زیر را در فایل talker.py قرار دهید:
+
+```python
+#!/usr/bin/env python
+import rospy
+from std_msgs.msg import String
+
+def talker(): # create a node with name of talker
+rospy.init_node('talker', anonymous=True)
+
+    # create a topic (publisher) with name of chatter
+    pub = rospy.Publisher('chatter', String, queue_size=10)
+    rate = rospy.Rate(10) # 10hz or 100ms
+    while not rospy.is_shutdown(): # until when roscore is ok
+        hello_str = "hello world %s" % rospy.get_time() # make an string
+        rospy.loginfo(hello_str) # log it in terminal
+        pub.publish(hello_str) # publish it in chatter topic
+        rate.sleep() # 100ms delay
+
+if **name** == '**main**': # run it if we are in this file
+try:
+talker()
+except rospy.ROSInterruptException: # any error then pass it
+pass
+```
+
+و کد زیر را نیز در listener.py قرار دهید:
+
+```python
+#!/usr/bin/env python
+import rospy
+from std_msgs.msg import String
+
+# call-back function
+
+def callback(data):
+rospy.loginfo(rospy.get_caller_id() + 'I heard %s', data.data)
+
+def listener(): # create a node with name of listener
+rospy.init_node('listener', anonymous=True)
+
+    # create a topic (subscriber) with name of chatter
+    rospy.Subscriber('chatter', String, callback)
+
+    rospy.spin() # re-match with roscore
+
+if **name** == '**main**':
+listener()
+```
+
+برای اجرای کدهای پایتون باید دسترسی آنها را با کمک کامند chmod تغییر بدهیم، کافیست در پوشه script یک دور کامند زیر را اجرا نماییم (همه برنامه ها قابل اجرا می شوند):
+
+```bash
+$ roscd beginner_tuts
+$ cd scripts
+$ chmod +x \*
+```
+
+حال با کمک کامندهای زیر می توانید این مثال را اجرا نمایید:
+
+```bash
+$ roscore
+$ rosrun beginner_tuts talker.py
+$ rosrun beginner_tuts listener.py
+```
+
+توجه شود که اگر با خطا روبرو شدید کامندهای زیر را نیز امتحان کنید (روی برخی از لینوکس ها با python و روی برخی دگر با python3)
+
+```bash
+$ roscore
+$ python3 talker.py
+$ python3 listner.py
+```
+
+توجه شود که اگر از در داخل ROS ملودیک هستید در برنامه های پایتونی خود از کامنت هدر زیر استفاده کنید:
+
+```python
+#!/usr/bin/env python
+```
+
+و اگر در داخل نئوتیک هستید از کد زیر استفاده کنید:
+
+```python
+#!/usr/bin/env python3
+```
+
+با این کامنت ورژن پایتون سند پایتونی را به مفسر پایتون می فهمانید.
