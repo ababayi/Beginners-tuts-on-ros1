@@ -550,7 +550,7 @@ listener()
 ```bash
 $ roscd beginner_tuts
 $ cd scripts
-$ chmod +x \*
+$ chmod +x *
 ```
 
 حال با کمک کامندهای زیر می توانید این مثال را اجرا نمایید:
@@ -912,6 +912,8 @@ print("Requesting %s+%s"%(x, y))
 print("%s + %s = %s"%(x, y, add_two_ints_client(x, y)))
 ```
 
+## پارامترها
+
 در ادامه به روش ارتباطی پارامتری می پردازیم. پارامترها ثابت هایی هستند که در هسته راس ذخیره می شوند. با کمک دستور زیر می توانیم با پارامترها کار کنیم:
 
 ```bash
@@ -929,7 +931,135 @@ $ rosparam load [file-address]
 $ rosparam dump [file-address]
 ```
 
-برای مشاهده در مورد نحوه بکارگیری پارامترها (ست کردن و گرفتن) در سی پلاس پلاس و پایتون از لینک های زیر استفاده نمایید:
+برای استفاده از پارامترها در برنامه سی پلاس پلاس به شیوه زیر عمل می کنیم:
+
+```c++
+ros::NodeHandle nh;
+std::string global_name, relative_name, default_param;
+if (nh.getParam("/global_name", global_name))
+{
+  ...
+}
+
+if (nh.getParam("relative_name", relative_name))
+{
+...
+}
+
+// Default value version
+nh.param<std::string>("default_param", default_param, "default_value");
+```
+
+همچنین بدون ایجاد نود هم می توانید به طریق زیر عمل کنید:
+
+```c++
+std::string global_name, relative_name, default_param;
+if (ros::param::get("/global_name", global_name))
+{
+  ...
+}
+
+if (ros::param::get("relative_name", relative_name))
+{
+...
+}
+
+// Default value version
+ros::param::param<std::string>("default_param", default_param, "default_value");
+```
+
+برای ست کردن مقادیر بر روی پارامتر در سی پلاس پلاس به شیوه زیر عمل می کنیم:
+
+```c++
+ros::NodeHandle nh;
+nh.setParam("/global_param", 5);
+nh.setParam("relative_param", "my_string");
+nh.setParam("bool_param", false);
+```
+
+همچنین بدون ایجاد نود می توانید پارامترها مقدار دهی کنید:
+
+```c++
+ros::param::set("/global_param", 5);
+ros::param::set("relative_param", "my_string");
+ros::param::set("bool_param", false);
+```
+
+برای مشاهده موجود بودن یک پارامتر می توانید به دو روش زیر عمل کنید:
+
+```c++
+ros::NodeHandle nh;
+if (nh.hasParam("my_param"))
+{
+  ...
+}
+```
+
+یا
+
+```c++
+if (ros::param::has("my_param"))
+{
+  ...
+}
+```
+
+همچنین برای پاک کردن یک پارامتر در سی پلاس پلاس می توانید به روش زیر عمل کنید:
+
+```c++
+ros::NodeHandle nh;
+nh.deleteParam("my_param");
+```
+
+یا
+
+```c++
+ros::param::del("my_param");
+```
+
+در زبان پایتون نیز مشابه و ساده تر می باشد:
+
+دریافت اطلاعات یک پارامتر:
+
+```python
+global_name = rospy.get_param("/global_name")
+relative_name = rospy.get_param("relative_name")
+private_param = rospy.get_param('~private_name')
+default_param = rospy.get_param('default_param', 'default_value')
+
+# fetch a group (dictionary) of parameters
+gains = rospy.get_param('gains')
+p, i, d = gains['p'], gains['i'], gains['d']
+```
+
+مقداردهی پارامترها:
+
+```python
+# Using rospy and raw python objects
+rospy.set_param('a_string', 'baz')
+rospy.set_param('~private_int', 2)
+rospy.set_param('list_of_floats', [1., 2., 3., 4.])
+rospy.set_param('bool_True', True)
+rospy.set_param('gains', {'p': 1, 'i': 2, 'd': 3})
+
+# Using rosparam and yaml strings
+rosparam.set_param('a_string', 'baz')
+rosparam.set_param('~private_int', '2')
+rosparam.set_param('list_of_floats', "[1., 2., 3., 4.]")
+rosparam.set_param('bool_True', "true")
+rosparam.set_param('gains', "{'p': 1, 'i': 2, 'd': 3}")
+
+rospy.get_param('gains/p') #should return 1
+```
+
+مشاهده موجود بودن یک پارامتر و حذف آن:
+
+```python
+if rospy.has_param('to_delete'):
+    rospy.delete_param('to_delete')
+```
+
+برای مشاهده جزئیات بیشتر به لینک های زیر مراجعه نمایید:
 
 پایتون: http://wiki.ros.org/rospy/Overview/Parameter%20Server
 
