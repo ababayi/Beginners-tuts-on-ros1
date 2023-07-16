@@ -8,7 +8,7 @@
 - آشنایی با دستورات مهم لینوکس
 - آموزش نصب ROS، ایجاد محیط کاری و ایجاد اولین پکیج
 - آشنایی با نحوه ایجاد گره ها و تاپیک ها
-- آشنا با سرویس ها
+- آشنا با پیام ها و سرویس ها
 - آشنایی با پارامترها
 - امکانات کاربردی سیستم عامل ROS
 - آشنایی با فایل launch
@@ -581,3 +581,357 @@ $ python3 listner.py
 ```
 
 با این کامنت ورژن پایتون سند پایتونی را به مفسر پایتون می فهمانید.
+
+## آشنا با پیام ها و سرویس ها
+
+در برخی از مواقع نیاز می شود تا فرمت خاصی برای ارتباط از نوع تاپیک تعریف کنیم. در این مواقع از پیام ها (Message) استفاده می کنیم. ساختار یک پیام را می توان با کمک دیتا-تایپ های زیر تعریف کرد:
+
+```
+int8 (also uint8)
+int16
+int32
+int64
+float32
+string
+time
+duration
+(other types of msg)
+(using arrays [])
+header
+```
+
+برای ایجاد یک مسیج اختصاصی (برای مثال مسیج Student) در ابتدا نیاز است تا ابتدا در داخل پوشه پکیج مان یک پوشه به نام msg ایجاد کنیم و سپس در داخل این پوشه، یک فایل با نام مسیج مورد نظر (مثلا Student.msg) ایجاد نماییم:
+
+```bash
+$ roscd beginner_tuts
+$ mkdir msg && cd msg
+$ touch Student.msg
+```
+
+سپس در فایل Student.msg ساختار پیام خود را با کمک دیتاتایپ هایی که مشخص شد تعریف کنیم (برای مثال نام و نام خانوادگی را با رشته، سن را عدد اینتجر و نمرده را با float32 مشخص می کنیم):
+
+```
+string name
+string lastname
+int8 age
+float32 score
+```
+
+حال که مسیج را تعریف کردیم نیاز است تا آنرا به راس و کامپایلر بشناسانیم. درون پوشه پکیج در داخل فایل package.xml دو خط زیر را uncomment کنید:
+
+```xml
+<build_depend>message_generation</build_depend>
+<exec_depend>message_runtime</exec_depend>
+```
+
+برای شناساندن این نوع پیام به کامپایلر نیاز است تا در فایل CMakeList.txt نیز تغییراتی اعمال کنیم. در ابتدا نیاز است تا پکیج message_generation را به لیست پکیج های پیش نیاز اضافه کنیم، یعنی در داخل تابع find_package قرار دهیم، که در واقع این تابع به صورت زیر در می آید:
+
+```c++
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  std_msgs
+  message_generation
+)
+```
+
+همچنین نیاز است تا خط زیر در داخل تابع catkin_package کامنتش غیرفعال و message_runtime به انتهای آن اضافه شود:
+
+```c++
+catkin_package(
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
+)
+```
+
+حال نیاز است تا آدرس فایل مسیج را به تابع add_message_file بدهیم (حتما Uncomment کنید و در همان محل قرار دهید):
+
+```c++
+ add_message_files(
+   FILES
+   Student.msg
+ )
+```
+
+همچنین بخش generate_message را نیز به حالت uncomment در بیاورید:
+
+```c++
+ generate_messages(
+   DEPENDENCIES
+   std_msgs
+ )
+```
+
+اکنون مجدد به شاخه اصلی پروژه بروید و یک دوره catkin_make را اجرا کنید. سپس اگر محیط کار را سورس نکردید، سورس کنید (اگر هم که کردید که هیچ) . اکنون با کمک دستور زیر می توانید مسیج ایجاد شده را مشاهده نمایید:
+
+```bash
+$ rosmsg show Student
+```
+
+برای مشاهده جزئیات بیشتر در مورد پیام ها (Messages) می توانید به لینک زیر در داخل خود ویکی راس مراجعت نمایید:
+
+http://wiki.ros.org/ROS/Tutorials/CreatingMsgAndSrv
+
+در ادامه به سراغ سرویس ها می رویم. سرویس یک نوع ارتباطی دو طرفه می باشد، شبیه توابع در برنامه نویسی است. برخی از کامندهایی که در کار با سروریس ها بکار می آیند را با هم مرور می کنیم. لیستی از این کامندها
+
+```bash
+$ rosservice -h
+$ rosservice list
+$ rosservice type /clear
+$ rosservice info /clear
+```
+
+برای استفاده از یک سرویس در درون ترمینال از سوئیچر call استفاده می کنیم، برای مثال قصد داریم از سرویس /clear که مربوط به پکیج turtlesim است استفاده کنیم. در درون این سرویس یک تابع قرار گرفته که مسیری که لاکپشت رفته را پاک میکند (توجه کنید که این سرویس در ورودی چیزی نمی گیرد):
+
+```bash
+$ rosservice call /[service-name] [value]
+$ rosservice call /clear
+```
+
+برای مشاهده نوع مسیج هایی که در سرویس ها رد بدل می شود از کامند زیر استفاده می کنیم:
+
+```bash
+$ rossrv show turtlesim/Spawn
+
+```
+
+توجه شود که مقدار turtlesim/Spawn در کامند بالا با کمک rosservice type استخراج شده است. با کمک کامند بالا ما ساختار این مسیج را می بینیم! برای راحتی می توانیم با کمک دستور پایپ (|) دو دستور را در یک کامند لاین اجرا کنیم. دستور پایپ خروجی دستور اول را در ورودی دستور دوم قرار می دهد:
+
+```bash
+$ rosservice type /spawn | rossrv show
+```
+
+در ادامه می خواهیم در پنچره یک لاکپشت دیگر با کمک سرویس spawn ایجاد کنیم. ساختار دستوری زیر را اجرا می کنیم:
+
+```bash
+$ rosservice call /[service-name] [datas]
+$ rosservice call /spawn "x: -1.0 y: 1.0 theta: 2.0 name: 'myturtle'"
+```
+
+توجه کنید که با دوبار تب زدن می توانید ساختار دیتا را لود کنید! توجه کنید که سرویس spawn به ما به عنوان خروجی نام انتخابی را بازخواهد گرداند!
+
+در ادامه به نحوه ایجاد یک سرویس در داخل پکیج مان می پردازیم. برای اینکار نیاز است تا ابتدا به دایرکتوری پروژه ما برویم و نیاز است در داخل پکیج مان پیام های مخصوص سرویس ها (که با فرمت .srv هستند) را ایجاد کنیم. بدین منظور ابتدا یک پوشه به نام srv که حاوی پیام های سرویسی ما هست را اجرا ایجاد می کنم و در داخل آن یک فایل با نام دلخواه و فرمت .srv (مثلا AddTwoInts.srv) را ایجاد میکنیم:
+
+```bash
+$ roscd beginner_tuts/
+$ mkdir srv && cd srv
+$ touch AddTwoInts.srv
+```
+
+در ادامه باید مسیج سرویسی را ایجاد کنیم (فرمت مشابه همان مسیج های عادی است با این تفاوت که در اینجا باید نوع خروجی را نیز مشخص کنیم، برای مشخص کردن خروجی از "---" استفاده میکنم:
+
+```
+int64 a
+int64 b
+---
+int64 sum
+```
+
+همچنین از آنجایی که ما داریم از پکیج آموزشی خود را استفاده می کنیم می توانید مستقیمن این فایل را به پوشه srv کپی کنید. برای کپی کردن فایل های داخلی خود پکیج راس از دستور roscp استفاده میکنم:
+
+```bash
+$ roscd rospy_tutorials AddTwoInts.srv srv/AddTwoInts.srv
+```
+
+در ادامه برای فهماندن این نوع مسیج به کامپایلر از در داخل فایل CmakeLists.txt در بخش سرویس، تابع add_service_files را از حالت کامنت خارج و نام فایل srv مان را معرفی میکنم:
+
+```python
+## Generate services in the 'srv' folder
+ add_service_files(
+   FILES
+   AddTwoInts.srv
+ )
+```
+
+در ادامه با کمک دستور catkin_make یک دور از پکیج کامپایل می گیریم. اکنون ما سرویس را ایجاد کردیم (در واقع سرویس یک نوع مسیج است) و اکنون برای بهره گیری از این سرویس نیاز به یک سرور و کلاینت داریم. برای ایجاد سرور و کلاینت می توانیم از پاتیون یا سی پلاس پلاس بهره گیری کنیم. ابتدا ما با کمک سی پلاس پلاس این کار را انجام می دهیم.
+
+برای ایجاد برنامه سی پلاس پلاس ما دو نود نیاز داریم یک نود که وظیفه سرور را برای ما انجام دهد و یک نود که برای ما وظیفه کلاینت را بر عهده بگیرد. ما دو فایل add_two_ints_client.cpp و add_two_ints_server.cpp را در داخل پوشه src ایجاد می کنیم. کد فایل add_two_ints_server.cpp به شرح زیر می باشد (کامنت ها گویای کد است):
+
+```c++
+#include "ros/ros.h"
+#include "beginner_tuts/AddTwoInts.h"
+
+
+// Service Servicer Function: add
+bool add(beginner_tuts::AddTwoInts::Request  &req,
+         beginner_tuts::AddTwoInts::Response &res)
+{
+  res.sum = req.a + req.b; // res = {sum}, req ={a,b}
+  ROS_INFO("request: x=%ld, y=%ld", (long int)req.a, (long int)req.b);
+  ROS_INFO("sending back response: [%ld]", (long int)res.sum);
+  return true;
+}
+
+
+int main(int argc, char **argv)
+{
+  // Initiazte Node
+  ros::init(argc, argv, "add_two_ints_server");
+  ros::NodeHandle n;
+
+
+  // Initiate Creating Service Server & And Publishing A "add" Service
+  ros::ServiceServer service = n.advertiseService("add_two_ints", add);
+  ROS_INFO("Ready to add two ints.");
+  ros::spin();
+
+
+  return 0;
+}
+```
+
+و کد فایل add_two_ints_client.cpp حاوی کد زیر می باشد:
+
+```c++
+#include "ros/ros.h"
+#include "beginner_tuts/AddTwoInts.h"
+#include <cstdlib>
+
+
+int main(int argc, char **argv)
+{
+
+  // Create A Node
+  ros::init(argc, argv, "add_two_ints_client");
+  if (argc != 3) // 3 Arguments in Terminal
+  {
+    ROS_INFO("usage: add_two_ints_client X Y");
+    return 1;
+  }
+
+
+  // Create A Service Client
+  ros::NodeHandle n;
+  ros::ServiceClient client = n.serviceClient<beginner_tuts::AddTwoInts>("add_two_ints");
+
+  // Create A Service
+  beginner_tuts::AddTwoInts srv;
+
+
+  // Getting Service a,b From Terminal Argument
+  srv.request.a = atoll(argv[1]);
+  srv.request.b = atoll(argv[2]);
+  if (client.call(srv))
+  {
+    ROS_INFO("Sum: %ld", (long int)srv.response.sum);
+  }
+  else
+  {
+    ROS_ERROR("Failed to call service add_two_ints");
+    return 1;
+  }
+
+
+  return 0;
+}
+```
+
+پس از تنظیم کدها یک دور catkin_make را اجرا کنید تا فایل ها کامپایل شود. توجه کنید که حتما چهار خط زیر را در فایل CMakeList.txt قرار دهید تا این فایل ها به کامپایلر معرفی شوند:
+
+```c++
+add_executable(add_two_ints_server src/add_two_ints_server.cpp)
+target_link_libraries(add_two_ints_server ${catkin_LIBRARIES})
+
+
+add_executable(add_two_ints_client src/add_two_ints_client.cpp)
+target_link_libraries(add_two_ints_client ${catkin_LIBRARIES})
+```
+
+در ادامه برای اجرای این کد، کامند های زیر را اجرا می کنیم:
+
+```bash
+$ roscore
+$ rosrun beginner_tuts add_two_ints_serve
+$ rosservice call /add_two_ints 1 2
+$ rosrun beginner_tuts add_two_ints_client 2 3
+```
+
+در ادامه به نحوه ایجاد این برنامه در پایتون می پردازیم.
+
+برای پایتون هم به صورت مشابه دو نود با نام های add_two_ints_client.py و add_two_ints_server.py ایجاد می کنیم. کد موجود در add_two_ints_server.py به شرح زیر است:
+
+```python
+#!/usr/bin/env python
+
+
+from __future__ import print_function
+
+
+from beginner_tuts.srv import AddTwoInts,AddTwoIntsResponse
+import rospy
+
+
+def handle_add_two_ints(req):
+    print("Returning [%s + %s = %s]"%(req.a, req.b, (req.a + req.b)))
+    return AddTwoIntsResponse(req.a + req.b)
+
+
+def add_two_ints_server():
+    rospy.init_node('add_two_ints_server')
+    s = rospy.Service('add_two_ints', AddTwoInts, handle_add_two_ints)
+    print("Ready to add two ints.")
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    add_two_ints_server()
+
+```
+
+کد موجود در add_two_ints_client.py به شرح زیر است:
+
+```python
+#!/usr/bin/env python
+
+from **future** import print_function
+
+import sys
+import rospy
+from beginner_tutorials.srv import \*
+
+def add_two_ints_client(x, y):
+rospy.wait_for_service('add_two_ints')
+try:
+add_two_ints = rospy.ServiceProxy('add_two_ints', AddTwoInts)
+resp1 = add_two_ints(x, y)
+return resp1.sum
+except rospy.ServiceException as e:
+print("Service call failed: %s"%e)
+
+def usage():
+return "%s [x y]"%sys.argv[0]
+
+if **name** == "**main**":
+if len(sys.argv) == 3:
+x = int(sys.argv[1])
+y = int(sys.argv[2])
+else:
+print(usage())
+sys.exit(1)
+print("Requesting %s+%s"%(x, y))
+print("%s + %s = %s"%(x, y, add_two_ints_client(x, y)))
+```
+
+در ادامه به روش ارتباطی پارامتری می پردازیم. پارامترها ثابت هایی هستند که در هسته راس ذخیره می شوند. با کمک دستور زیر می توانیم با پارامترها کار کنیم:
+
+```bash
+$ rosparam -h
+$ rosparam set
+$ rosparam get
+$ rosparam delete
+$ rosparam list
+```
+
+برای خواندن یا ذخیره کردن پارامترها داخل یک فایل از دو کامند زیر بهره می بریم:
+
+```bash
+$ rosparam load [file-address]
+$ rosparam dump [file-address]
+```
+
+برای مشاهده در مورد نحوه بکارگیری پارامترها (ست کردن و گرفتن) در سی پلاس پلاس و پایتون از لینک های زیر استفاده نمایید:
+
+پایتون: http://wiki.ros.org/rospy/Overview/Parameter%20Server
+
+سی پلاس پلاس: http://wiki.ros.org/roscpp/Overview/Parameter%20Server
+
+توجه شود که پارامترها برای تنظیمات استفاده میشه!
