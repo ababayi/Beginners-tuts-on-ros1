@@ -300,6 +300,12 @@ $ rostopic -h
 $ rostopic list
 ```
 
+نکته: برای مشاهده لیست تاپیک ها به صورت دسته بندی شده، از دستور زیر بهره می بریم:
+
+```bash
+$ rostopic list -v
+```
+
 با کمک دستور زیر می توانید پیام های رد و بدل شده در یک تاپیک را مشاهده کنید:
 
 ```bash
@@ -1067,3 +1073,384 @@ if rospy.has_param('to_delete'):
 سی پلاس پلاس: http://wiki.ros.org/roscpp/Overview/Parameter%20Server
 
 توجه شود که پارامترها برای تنظیمات استفاده میشه!
+
+## آشنایی با rosbag
+
+هنگامی که نیاز باشد پیام های داخل یک یا چند تاپیک را ضبط کنیم، از rosbag بهره می بریم. برای ایجاد فایل بگ خوب است که یک دایرکتوری در پوشه فضای کاری مان ایجاد میکنم و فایل های بگ را در داخل آن ذخیره سازی می کنیم. برای ذخیره کردن پیام های داخل تمام تاپیک ها از دستور زیر بهره می بریم:
+
+```bash
+$ mkdir rosbag
+$ cd rosbag
+$ rosbag record -a
+```
+
+برای پایان دادن به ضبط از دستور control+c استفاده می کنیم. برای مشاهده فایل بگ ایجاد شده و مشاهده جزیئات آن (مخل ذخیره، ورژن، طول زمانی، زمان استارت و پایان، حجم، نوع مسیج ها، تاپیک ها، تعداد پیام های ضبط شده و ...) از دستور زیر می توان استفاده کرد:
+
+```bash
+$ ls
+$ rosbag info [bag-name]
+```
+
+اکنون برای اجرا کردن فایل بگ از دستور play استفاده می کنیم. در مثال ویدیو از ماژول turtle برای اجرای تست rosbag استفاده شده بود، ما برای تست نود teleop_key را می بندیم و همچنین تاپیک cmd_vel را اکو می کنیم و سپس فایل بگ را play می کنیم:
+
+```bash
+$ rostopic echo /turtle1/cmd_vel
+$ rosbag play [bag-name]
+```
+
+مشاهده خواهد شد که تاپیک های ضبط شده منتشر شده و لاکپشت حرکت می کند. برای puase/play کردن می توان از دکمه space بهره برد. با کلید s هم می توانیم فریم به فریم بگ را اجرا کنیم. همچنین با سوئیچر -r می توانیم سرعت پلی شدن را افزایش یا کاهش دهیم. برای مثال می خواهیم با سرعت 2 برابر پخش شود:
+
+```bash
+$ rosbag play [bag-name] -r 2
+```
+
+برای رکورد کردن یک تاپیک خاص می توان از دستور زیر بهره برد (همچنین یک نام می توان به بگ اختصاص داد):
+
+```bash
+$ rosbag record [topic1] [topic2] -O [bag-name]
+```
+
+برای مشاهده جزئیات بیشتر در مورد rosbag می توانید به لینک های زیر در داکیومنت راس مراجعه نمایید:
+
+http://wiki.ros.org/ROS/Tutorials/Recording%20and%20playing%20back%20data
+
+http://wiki.ros.org/ROS/Tutorials/reading%20msgs%20from%20a%20bag%20file
+
+## آشنایی با roswtf
+
+ابزار بعدی roswtf هست که خیلی کم استفاده می شود. داخل هر دایرکتوری وارد کنید اطلاعات مفیدی برای دیباگ کردن می دهد. برای مشاهده جزئیات بیشتر به لینک زیر مراجعه نمایید:
+
+http://wiki.ros.org/ROS/Tutorials/Getting%20started%20with%20roswtf
+
+# آشنایی با ابزارهای rqt
+
+در ادامه به برسی ابزارهای rqt می پردازیم. ابزار زیر نمودار نودها و تاپیک ها را به صورت گرافیکی به ما نمایش می دهد:
+
+```bash
+$ rosrun rqt_graph rqt_graph
+```
+
+دستور زیر به ما پیام های رد بدل شده بین نودها را در داخل کنسول زیبا نمایش میدهد، همچنین امکان فیلترینگ دیتا نیز هست:
+
+```bash
+$ rosrun rqt_console rqt_console
+```
+
+توجه شود که سطح اهمیت پیام ها به شرح زیر است:
+
+```
+debug
+info
+warning
+error
+fatal
+```
+
+که برای Api مربوط به rospy استفاده از این لاگ ها به شرح زیر می شود:
+
+```python
+rospy.logdebug(msg, *args, \*\*kwargs)
+rospy.loginfo(msg, *args, **kwargs)
+rospy.logwarn(msg, \*args, **kwargs)
+rospy.logerr(msg, *args, \*\*kwargs)
+rospy.logfatal(msg, *args, \*\*kwargs)
+```
+
+توجه شود که اگر نیاز شد از متغیری را در پیام لاگ ها چاپ کنید از فرمت زیر بهره ببرید:
+
+```python
+rospy.logerr("%s returned the invalid value %s", other_name, other_value)
+```
+
+همچنین اگر نیاز شد متغیر صحیح و فلوت لاگ شود از فرمت زیر می توانید بهره ببرید:
+
+```python
+rospy.logerr("This is a integer %d num and this is float %f", 23, 23.232)
+```
+
+برای مشاهده جزئیات بیشتر به لینک زیر مراجعه نمایید:
+
+آشنایی با ابزارهای rqt:
+http://wiki.ros.org/ROS/Tutorials/UsingRqtconsoleRoslaunch
+
+لاگ های درپایتون: http://wiki.ros.org/rospy/Overview/Logging
+
+لاگ ها در سی پلاس پلاس: http://wiki.ros.org/roscpp/Overview/Logging
+
+## واحد های استاندارد
+
+واحدهای استاندارد ROS به شرح زیر هست:
+
+- طول و فاصله: متر
+- جرم: کیلوگرم
+- زمان: ثانیه
+- جریان: آمپر
+- اختلاف پتانسیل: ولت
+- مغناطیس: تسلا
+- زاویه: رادیان
+- فرکانس: هرتز
+- نیرو: وات
+- دما: سلسیوس
+
+بقیه واحد ها مثل سرعت و شتاب و ... از تقسیم واحد های بالا بر هم بدست می آیند.
+
+## آشنایی با فایل های launch
+
+در ادامه به لانچ فایل های می پردازیم که به ما این امکان را می دهند که با اجرای یک فایل، چندین نود را همزمان درون یک ترمنیال اجرا کنیم که خیلی به خلوت شدن محیط کاری کمک می کند. برای اینکار یک پوشه مجزا در پکیج مان تحت عنوان launch ایجاد می کنیم و فایل های launch مان را در داخل این پوشه قرار می دهیم:
+
+```bash
+$ roscd beginner_tuts/
+$ mkdir launch
+```
+
+حال مثال می خواهیم برنامه لاکپشت را به کمک یک لانچ فایل اجرا کنیم. یک فایل با نام turtle_run.launch ایجاد می کنیم:
+
+```bash
+$ touch turtle_run.launch
+```
+
+و کد زیر را در داخل آن قرار می دهیم:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim" />
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control" />
+</launch>
+```
+
+در کد بالا 2 نود turtlesim_node و turtle_teleop_key از پکیج turtlesim قرار است اجرا شود. (توجه شود که type همان نود است) و یک نام هم به هر کدام از نود ها اختصاص می دهیم. توجه شود که قبل از اجرا کردن یک فایل launch حتما باید هسته فعال باشد ولی اگر هم فعال نبود، خود دستور roslaunch آنرا اجرا می کند. با دستور زیر می توانیم فایل لانچ ایجاد شده را اجرا کنیم:
+
+```bash
+$ roslaunch turtle_run.launch
+```
+
+همچنین توجه شود که ما می توانیم با کمک دستور زیر از سایر دایرکتوری ها فایل لانچ موجود در پکیج مدنظر را اجرا کنیم:
+
+```bash
+$ roslaunch beginner_tuts turtle_run.launch
+```
+
+درون فایل لانچ می توان از attribute ها مختلف بهره برد. یکی از این attribute ها respawn می باشد که نود را هر چند بار هم که ببندیم مجدد اجرا کند (در این مثال پنجره لاکپشت پس از هر بار بسته شدن، مجدد پس از 3 ثانیه تاخیر از نو اجرا می شود. توجه شود که تاخیر اتریبیوت اجباری نیست!)
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim" respawn="true" respawn_deley="3"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control" />
+</launch>
+```
+
+یا می توانیم با کمک اتریبیوت required یک نود را اجباری کنیم (در صورتیکه این نود بسته شود، کل هسته متوقف می شود.):
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim" required="true" />
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control" />
+</launch>
+```
+
+یا می توانیم در صورتی که نود آرگومان ورودی دارد، برای آن مقادیری را نیز تعیین کنیم:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim" args="1 2 3" />
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control" />
+</launch>
+```
+
+یا می توانیم بگوییم در صورتیکه که یک نود اجرا شد، تمام پارامترهای قبلی ذخیره شده در رم حذف شود:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim" clear_params="true" />
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control" />
+</launch>
+```
+
+توجه شود که در زبان xml تگ هایی که تگ ها بسته شونده و تکی به شکلی زیر است:
+
+```xml
+<closing></closing>
+<non-closing>
+```
+
+تگ node را می توانیم به صورت دوتایی نیز تعریف کنیم و در داخل آن از تگهای مختلف استفاده کنیم از جمله تگ env که برای تعریف مجدد متغیرهای محیط کاری تعریف می شود، مقدار name نام آن متغیر و مقدار value برابر مقدار جدیدی است که می خواهیم به آن اختصاص دهیم:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim">
+        <env name="Env_Varaible_Name" value="New_Value" />
+    </node>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control" />
+</launch>
+```
+
+همچنین می توان تاپیک ها را re-map کرد (یعنی یک نام دیگر بجای نام پیشفرض تاپیک کنیم، این مورد زمانی کاربردی می شود که نیاز باشد از یک نود و تاپیک چندین بار استفاده کنیم و می خواهیم تاپیک هر نود مجزا باشد). برای مثال در مثال لاکپشت می خواهیم که تاپیک cmd_vel با نام vel2 ریمپ شود، در محیط ترمینال این ریمپ کردن به شکل زیر در می آید:
+
+```bash
+$ roscore
+$ rosrun turtlesim turtlesim_node /turtle1/cmd_vel:=vel2
+$ rosrun turtlesim turtle_teleop_key /turtle1/cmd_vel:=vel2
+```
+
+و در محیط لانچ فایل مثال لاکپشت به صورت زیر در می آید:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+    </node>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+    </node>
+</launch>
+```
+
+همچنین می توانیم در تگ نود یک پارامتر دلخواه را تعریف کنیم تا در هنگام اجرای هسته، در فضای پارامترها اجرا شود (توجه شود نوع پارامتر می تواند str ، int ، bool ، float). در صورتیکه تعداد پارامترهای برنامه ما زیاد هست می توانیم آنرا در داخل یک فایل ذخیره کنیم و در داخل لانچ فایلمان آنرا فراخوانی کنیم. بهتر است که این فایل در یک پوشه مجزا به نام param ساخته شود:
+
+```bash
+$ roscd beginner_tuts
+$ mkdir params
+$ cd params/
+$ touch param
+```
+
+در داخل فایل param مثلا متغیر زیر را ذخیره می کنیم:
+
+```
+hello world!
+```
+
+در ادامه در کد لانچ فایل:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+        <param name="fromFile" type="str" textfile="$(find beginner_tuts)/params/param" />
+
+    </node>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+    </node>
+</launch>
+```
+
+البته بهتر برای حالتی که قرار است تعداد زیادی پارامترا را اجرا کنیم، حتما از فرمت yaml بهره ببریم. برای اینکار یک پوشه yaml ایجاد می کنیم و پارامترهایمان را در داخل آن ذخیره کنیم:
+
+```bash
+$ roscd beginner_tuts/
+$ mkdir yaml
+$ cd yaml
+$ touch param.yaml
+```
+
+در داخل فایل param.yaml می توانیم با کمک فرمت داده استاندارد Yaml پارامترهای مدنظرمان را تعریف کنیم، برای مثال:
+
+```yaml
+paramGroup1:
+  intPAram: 1
+  floatParam: 5.2323
+paramGroup2:
+  listParam: [1, 2, 3, "four"]
+  dicParam:
+    a: "This is a"
+    b: "and this is b"
+```
+
+حال برای خواندن این فایل داخل لانچ فایل به ترتیب زیر عمل می کنیم:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+        <param name="fromFile" type="str" textfile="$(find beginner_tuts)/params/param" />
+        <rosparam command="load" file="$(find beginner_tuts)/yaml/param.yaml" />
+
+    </node>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+    </node>
+</launch>
+```
+
+و برای اجرا همانند سابق عمل می کنیم:
+
+```bash
+$ roslaunch beginner_tuts turtle_run.launch
+```
+
+همچنین با کمک تگ rosparam نیز می توانیم متغیر خاصی در محیط مقدار دهی کنیم، به شکل زیر:
+
+```xml
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="sim">
+        <rosparam param="NN">1212</rosparam>
+    </node>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+    </node>
+</launch>
+```
+
+برای لانچ فایل ها نیز می توان آرگومان ورودی تعریف کرد، یعنی کاری کرد که هنگام اجرای یک لانچ فایل در ترمینال ورودی از آن بگیریم. در مثال زیر فایل لانچ یک آرگومان می گیرد و آنرا در متغیری به نام myArg ذخیره می کند که در جای جای فایل لانچ قابل استفاده است (می توان یک مقدار دیفالت نیز تعریف کرد):
+
+```xml
+<launch>
+    <arg name="myArg" default="[2,3]" />
+
+    <node pkg="turtlesim" type="turtlesim_node" name="sim">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+        <param name="fromFile" type="str" textfile="$(find beginner_tuts)/params/param" />
+        <rosparam command="load" file="$(find beginner_tuts)/yaml/param.yaml" />
+        <param name="NN" value="$(arg myArg)" />
+    </node>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+    </node>
+
+</launch>
+```
+
+همچنین در فایل های لانچ می توانیم یک فایل لانچ دیگر را فراخوانی و اینکلود کنیم:
+
+```xml
+<launch>
+    <include file="$(find beginner_tuts)/launch/somefile.launch" />
+    ...
+</launch>
+```
+
+پس از اینکلود کردن، قبل از اجرای بدنه اصلی لانچ فایل، فایل اینکلود شده اجرا می شود. برای کامنت کردن در فایل xml از همان روش html بهره می بریم:
+
+```xml
+<!-- my comment -->
+```
+
+همچنین می توانیم یک فایل لانچ را با نیم اسپیس های گوناگون (ns) گروپ بندی کنیم (زیاد کاربردی نداره ولی بد نیست بدونیم):
+
+```xml
+<launch>
+    <group ns="group1">
+    <node pkg="turtlesim" type="turtlesim_node" name="sim">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+        <param name="fromFile" type="str" textfile="$(find beginner_tuts)/params/param" />
+        <rosparam command="load" file="$(find beginner_tuts)/yaml/param." />
+
+    </node>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="control">
+        <remap from="/turtle1/cmd_vel" to="vel2" />
+    </node>
+    </group>
+
+    <group ns="group2">
+        .... other nodes ...
+    </group>
+
+</launch>
+```
+
+برای مشاهده جزئیات بیشتر به داکیومنت راس مراجعه نمایید:
+
+http://wiki.ros.org/roslaunch
+
+http://wiki.ros.org/ROS/Tutorials/UsingRqtconsoleRoslaunch
