@@ -1135,11 +1135,19 @@ http://wiki.ros.org/ROS/Tutorials/Getting%20started%20with%20roswtf
 $ rosrun rqt_graph rqt_graph
 ```
 
+خروجی این دستور به شکل زیر می باشد:
+
+![Alt text](image-5.png)
+
 دستور زیر به ما پیام های رد بدل شده بین نودها را در داخل کنسول زیبا نمایش میدهد، همچنین امکان فیلترینگ دیتا نیز هست:
 
 ```bash
 $ rosrun rqt_console rqt_console
 ```
+
+خروجی این دستور به شکل زیر خواهد بود:
+
+![Alt text](image-6.png)
 
 توجه شود که سطح اهمیت پیام ها به شرح زیر است:
 
