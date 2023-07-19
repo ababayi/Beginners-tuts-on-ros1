@@ -1467,3 +1467,311 @@ $ roslaunch beginner_tuts turtle_run.launch
 http://wiki.ros.org/roslaunch
 
 http://wiki.ros.org/ROS/Tutorials/UsingRqtconsoleRoslaunch
+
+## آشنایی با TFها
+
+در این قسمت قصد پرداختن به tf ها را داریم که کمتر به آنها پرداخته می شود. tf ها در واقع همان دستگاه های مختصاتی هستند که به ربات و اجزاء مختلف آن می چسبند و برای محاسبات رباتیکی مورد استفاده قرار می گیرند. برای آشنایی اولیه با tf ها ابتدا یک مثال اجرا می کنیم:
+
+```bash
+$ roslaunch turtle_tf turtle_tf_demo.launch
+```
+
+بعد مشابه این لانچ فایل خودمان ایجاد می کنیم و خروجی را مشاهده میک کنیم. با کمک دستور زیر می توانیم لیست tf ها فعال در برنامه را به صورت نموداری مشاهده کنیم:
+
+```bash
+$ rosrun rqt_tf_tree rqt_tf_tree
+```
+
+برای بدست آوردن اختلاف مکانی دو tf می توانیم از دستور زیر بهره ببریم:
+
+```bash
+$ rosrun tf tf_echo turtle1 turtle2
+```
+
+اختلاف موقعیت در دستگاه های مختلف به ما داده می شود.
+
+به برنامه ای که یک tf را درون تاپیک منتشر می کند، به اصطلاح tf broadcaster می گویند که نحوه ایجاد کردن آن به کمک سی پلاس پلاس و پایتون را توضیح می دهیم. بدین منظور یک پکیج مجزاء از پکیج beginner_tuts ایجاد می کنیم:
+
+```bash
+$ cd Desktop/catkin_ws/src/
+$ catkin_create_pkg learning_tf tf rospy roscpp turtlesim
+$ cd ..
+$ catkin_make
+```
+
+توجه شود که چون ما قبلا این ورک اسپس را در فایل .bashrc معرفی کرده ایم نیاز به این سورس کردن مجدد نیست. در ابتدا می خواهیم این برنامه را با کمک سی پلاس پلاس بنویسیم، پس ابتدا وارد پوشه مربوطه شده و یک فایل سی پلاس پلاس می شویم:
+
+```bash
+$ cd src/learning_tf/src/
+$ touch turtle_tf_broadcaster.cpp
+```
+
+کد مربوط به فایل سی پلاس پلاس برادکستر به شکل زیر می باشد (توضیحات مربوطه کامنت شده است)؛ در کد زیر یک تابع کالبک موجود است و یک تابع اصلی، در تابع اصلی ابتدا یک نود ایجاد کرده و سپس ورود یک آرگومان را برای آن ضروری می کنیم (که آرگومان ورودی، نام لاکپشت است). سپس در داخل تاپیک پوزیشن لاکپشت سابسکرایب می کنیم و اطلاعات لاکپشت را به تابع poseCallback پاس می دهیم. درون این تابع نیز ابتدا یک آبجکت برادکستر می سازیم و سپس مختصات کارتزین و زوایه ای را در فرمت استاندارد tf ها ذخیره کرده و در نهایت آنرا برادکست می کنیم:
+
+```c++
+#include <ros/ros.h>
+#include <tf/transform_broadcaster.h> // For creating tf
+#include <turtlesim/Pose.h> // Reading Pose of turtles from pose topic
+
+
+std::string turtle_name; // Name of turtle as string value
+
+
+// We make this call-back fcn for excute after receiving data from "pose" topic
+void poseCallback(const turtlesim::PoseConstPtr& msg)
+{
+  // Create A Transform Broadcaster Obj
+  static tf::TransformBroadcaster br;
+
+
+  // Katezian Specs.
+  tf::Transform transform;
+  transform.setOrigin( tf::Vector3(msg->x, msg->y, 0.0) ); // x y z
+
+
+  // Angular Specs.
+  tf::Quaternion q;
+  q.setRPY(0, 0, msg->theta); // roll pitch yaw
+  transform.setRotation(q);
+
+
+  // Broadcaster The Created Tf
+  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", turtle_name));
+}
+
+
+// Main Fcn
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "my_tf_broadcaster"); // Create Node
+
+  // At least one argument needed, Arg #1 => turtle_name
+  if (argc != 2){ROS_ERROR("need turtle name as argument"); return -1;};
+  turtle_name = argv[1];
+
+
+  ros::NodeHandle node;
+  // Subscibe to turtle#/pose and pass it to "poseCallback" fcn
+  ros::Subscriber sub = node.subscribe(turtle_name+"/pose", 10, &poseCallback);
+
+
+  ros::spin();
+  return 0;
+};
+```
+
+همچنین کد زیر را به فایل CMakeLists.txt اضافه می کنیم تا فایل سی پلاس پلاس ما قابلیت اجرایی پیدا کند:
+
+```c
+add_executable(turtle_tf_broadcaster src/turtle_tf_broadcaster.cpp)
+target_link_libraries(turtle_tf_broadcaster ${catkin_LIBRARIES})
+```
+
+در بهتر است برای این پکیج نیز یک فایل لانچ ایجاد کنیم چرا که همزمان قرار است برنامه لاکپشت را نیز اجرا کنیم، یک فایل لانچ در پوشه لانچ با نام start_demo.launch ایجاد میکنم و کد زیر را در داخل آن قرار می دهیم:
+
+```xml
+<launch>
+    <!-- Turtlesim Node-->
+    <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output= "screen"/>
+
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster"
+          args="/turtle1" name="turtle1_tf_broadcaster" />
+
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster"
+          args="/turtle2" name="turtle2_tf_broadcaster" />
+
+</launch>
+```
+
+توجه شود که در این مرحله برای ما فقط یک لاکپشت turtle1 ایجاد می شود و مختصات آن نسبت به world در تاپیک tf چاپ می شود. در ادامه به نحوه اجرای این کد در زبان پایتون توضیحات ارایه خواهد شد.
+
+خروجی این برنامه به شکل زیر خواهد بود:
+
+![تصویر اجرای برنامه](image-7.png)
+
+همچنین با دستور rqt_tf_tree می توان لیست tfها را نسبت به صورت درختی مشاهده کرد:
+
+![خروجی دستور](image-8.png)
+
+توجه شود که در این مرحله برای ما فقط یک لاکپشت turtle1 ایجاد می شود و مختصات آن نسبت به world در تاپیک tf چاپ می شود. در ادامه به نحوه اجرای این کد در زبان پایتون توضیحات ارایه خواهد شد.
+
+در ادامه قصد داریم برنامه برابدکستر را با پایتون نگارش کنیم. برای اینکار یک پوشه با نام script در دایرکتوری اصلی می سازیم و یک فایل پایتون با نام اجرا می کنیم:
+
+```py
+#!/usr/bin/env python
+import roslib
+roslib.load_manifest('learning_tf')
+import rospy
+
+
+import tf
+import turtlesim.msg # Importing Turtlesim Messages
+
+
+# Call-Back Fcn.
+def handle_turtle_pose(msg, turtlename):
+    # Make a tf broadcaster object
+    br = tf.TransformBroadcaster()
+
+
+    # Broadcasting the tf in standard format
+    br.sendTransform((msg.x, msg.y, 0),
+                     tf.transformations.quaternion_from_euler(0, 0, msg.theta),
+                     rospy.Time.now(),
+                     turtlename,
+                     "world")
+
+
+
+# Main Fcn.
+if __name__ == '__main__':
+    # Initiate A Node
+    rospy.init_node('turtle_tf_broadcaster')
+
+
+    # Read The Turtle Name
+    turtlename = rospy.get_param('~turtle')
+
+
+    # Subscribe in /turtle#/pose and pass it to handle_turtle_pose
+    rospy.Subscriber('/%s/pose' % turtlename,
+                     turtlesim.msg.Pose,
+                     handle_turtle_pose,
+                     turtlename)
+    rospy.spin()
+```
+
+حتما پوشه فایل اسکریپ تا را با کامند زیر اجرا پذیر کنید:
+
+```bash
+$ chmod +x scripts/
+```
+
+برای اجرای راحتر کد زیر را درون فایل لانچ قرار می دهیم:
+
+```xml
+<launch>
+    <!-- Turtlesim Node-->
+    <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output="screen"/>
+
+
+    <node name="turtle1_tf_broadcaster" pkg="learning_tf" type="turtle_tf_broadcaster.py" respawn="false" output="screen" >
+      <param name="turtle" type="string" value="turtle1" />
+    </node>
+    <node name="turtle2_tf_broadcaster" pkg="learning_tf" type="turtle_tf_broadcaster.py" respawn="false" output="screen" >
+      <param name="turtle" type="string" value="turtle2" />
+    </node>
+</launch>
+```
+
+خروجی مشابه فایل سی پلاس پلاس خواهد بود. در ادامه قصد داریم لاکپشت دوم را نیز به برنامه اضافه کنیم؛ به گونه ای که لاکپشت اول اگر حرکت کرد، لاکپشت دوم آنرا دنبال کند. یک فایل سی پلاس پلاس جدید به نام turtle_tf_listener.cpp ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم. (کامنت ها گذاری شده):
+
+```c
+#include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <geometry_msgs/Twist.h>
+#include <turtlesim/Spawn.h> // Fpr making new turtle
+
+
+// Main loop
+int main(int argc, char** argv){
+  ros::init(argc, argv, "my_tf_listener"); // Initiate node
+
+
+  ros::NodeHandle node;
+
+
+  // Use turtlesim spawn service to make a new turtle
+  ros::service::waitForService("spawn");
+
+
+  // Make a client for spawn service
+  ros::ServiceClient add_turtle =
+   node.serviceClient<turtlesim::Spawn>("spawn");
+  turtlesim::Spawn srv;
+
+
+  // Calling service for adding new turtle => name: turtle2
+  add_turtle.call(srv);
+
+
+  // Make a topic publisher (turtle2/cmd_vel)
+  ros::Publisher turtle_vel =
+    node.advertise<geometry_msgs::Twist>("turtle2/cmd_vel", 10);
+
+
+  // Create a tf listner for finding relative pose betwen turtle1 & turtle2
+  tf::TransformListener listener;
+
+
+  ros::Rate rate(10.0);
+  while (node.ok()){
+    tf::StampedTransform transform;
+    try{
+      ros::Time now = ros::Time::now();
+      ros::Time past = now - ros::Duration(5.0);
+
+
+      // Wait for calc of t1 & t2 pose
+      listener.waitForTransform("/turtle2", now ,"/turtle1",past , "/world" ,ros::Duration(1.0));
+
+
+      //  Find the diff. pose betwen t1 & t2 and put it in transform obj.
+      listener.lookupTransform("/turtle2", now, "/turtle1", past,"/world" , transform);
+    }
+    catch (tf::TransformException &ex) {
+      ROS_ERROR("%s",ex.what());
+      ros::Duration(1.0).sleep();
+      continue;
+    }
+
+
+    // Calc of linear and angular velocity
+    geometry_msgs::Twist vel_msg;
+    vel_msg.angular.z = 8.0 * atan2(transform.getOrigin().y(),
+                                    transform.getOrigin().x());
+    vel_msg.linear.x = 1.0 * sqrt(pow(transform.getOrigin().x(), 2) +
+                                  pow(transform.getOrigin().y(), 2));
+    turtle_vel.publish(vel_msg);
+
+
+    rate.sleep();
+  }
+  return 0;
+};
+```
+
+همچنین کد زیر را در CMakeList.txt اضافه می کنیم:
+
+```c
+add_executable(turtle_tf_listener src/turtle_tf_listener.cpp)
+target_link_libraries(turtle_tf_listener ${catkin_LIBRARIES})
+```
+
+و کد مربوط به لانچ فایل را به صورت زیر تغییر می دهیم (نود مربوط به لاکپشت دوم اضافه شد):
+
+```xml
+<launch>
+    <!-- Turtlesim Node-->
+    <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output= "screen"/>
+
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster" args="/turtle1" name="turtle1_tf_broadcaster" />
+
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster" args="/turtle2" name="turtle2_tf_broadcaster" />
+
+    <node pkg="learning_tf" type="turtle_tf_listener" name="turtle2_tf_listener" />
+
+
+</launch>
+```
+
+حال لانچ فایل را اجرا می کنیم. همچنین در یک ترمینال مجزاء نمودار درختی tfها را به نمایش می گذاریم. خروجی به شکل زیر خواهد بود:
+
+![تصویر خروجی](image-9.png)
