@@ -1775,3 +1775,239 @@ target_link_libraries(turtle_tf_listener ${catkin_LIBRARIES})
 حال لانچ فایل را اجرا می کنیم. همچنین در یک ترمینال مجزاء نمودار درختی tfها را به نمایش می گذاریم. خروجی به شکل زیر خواهد بود:
 
 ![تصویر خروجی](image-9.png)
+
+حالا با کمک پایتون این کار را انجام می دهیم. یک فایل جدید با نام turtle_tf_listener.py ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم. کد پایین یک پابلیشر ایجاد کرده و با محاسبه اختلاف مکانی و زاویه ای بین دو لاکپشت یک سرعت خطی و زاویه محاسبه در تاپیک turtle2/cmd_vel پابلیش می کند:
+
+```py
+#!/usr/bin/env python3
+import roslib
+roslib.load_manifest('learning_tf')
+import rospy
+import math
+import tf
+import geometry_msgs.msg
+import turtlesim.srv
+
+
+if __name__ == '__main__':
+
+
+    # Initizate The Node
+    rospy.init_node('turtle_tf_listener')
+
+
+    # Create tf listner obj.
+    listener = tf.TransformListener()
+
+
+    # Make new turtle using spawn service
+    rospy.wait_for_service('spawn')
+    spawner = rospy.ServiceProxy('spawn', turtlesim.srv.Spawn)
+    spawner(4, 2, 0, 'turtle2') # Turtle2 position
+
+
+    # Create publisher for publish data in trutlesim "turtle2/cmd_vel" topic
+    turtle_vel = rospy.Publisher('turtle2/cmd_vel', geometry_msgs.msg.Twist,queue_size=1)
+
+
+    # Find diff. pose betwen 2 trutle
+    rate = rospy.Rate(10.0)
+    while not rospy.is_shutdown():
+        try:
+            now = rospy.Time.now()
+            past = now - rospy.Duration(5.0)
+            #listener.waitForTransformFull("/turtle2", now,"/turtle1", past,"/world", rospy.Duration(1.0))
+            #(trans, rot) = listener.lookupTransformFull("/turtle2", now,"/turtle1", past,"/world")
+
+            (trans, rot) = listener.lookupTransformFull('/turtle2',rospy.Time(0),'/turtle1', rospy.Time(0), "/world")
+
+
+        except (tf.LookupException,  tf.ConnectivityException,  tf.ExtrapolationException):
+            continue
+
+
+        # Calc Angular and Linear velocity
+        angular = 4 * math.atan2(trans[1], trans[0])
+        linear = 0.5 * math.sqrt(trans[0] ** 2 + trans[1] ** 2)
+        cmd = geometry_msgs.msg.Twist()
+        cmd.linear.x = linear
+        cmd.angular.z = angular
+
+
+        # Publish data to "turtle2/cmd_vel" topic
+        turtle_vel.publish(cmd)
+
+
+        rate.sleep()
+```
+
+فایل لانچ پایتونی هم به شکل زیر تغییر می کند:
+
+```xml
+<launch>
+    <!-- Turtlesim Node-->
+    <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output="screen"/>
+
+
+    <node name="turtle1_tf_broadcaster" pkg="learning_tf" type="turtle_tf_broadcaster.py" respawn="false" output="screen" >
+      <param name="turtle" type="string" value="turtle1" />
+    </node>
+    <node name="turtle2_tf_broadcaster" pkg="learning_tf" type="turtle_tf_broadcaster.py" respawn="false" output="screen" >
+      <param name="turtle" type="string" value="turtle2" />
+    </node>
+
+
+    <node name="listener" pkg="learning_tf" type="turtle_tf_listener.py" respawn="false" output="screen" >
+    </node>
+</launch>
+```
+
+فایل لانچ را اجرا می کنیم. خروجی مشابه برنامه سی پلاس پلاس خواهد بود.
+
+تا الان ما تمام فریم هایی که ایجاد کردیم نسبت به world بود ولی می توانیم نسبت به یک فریم دلخواه (مثلا turtle1) یک فریم را ایجاد کنیم. برای این کار یک فایل با نام frame_tf_broadcaster.cpp ایجاد کرده و کد زیر را در داخل آن قرار می دهیم (یک tf جدید ایجاد شده و برادکست می شود)
+
+```c
+#include <ros/ros.h>
+#include <tf/transform_broadcaster.h>
+
+int main(int argc, char\*\* argv){
+ros::init(argc, argv, "my_tf_broadcaster");
+ros::NodeHandle node;
+
+tf::TransformBroadcaster br;
+tf::Transform transform;
+
+ros::Rate rate(10.0);
+while (node.ok()){
+transform.setOrigin( tf::Vector3(0.0, 2.0, 0.0) ); // relative kartezian pose to turtle1
+transform.setRotation( tf::Quaternion(0, 0, 0, 1) ); // relative angular pose to turtle1
+
+    // Make new frame relative to turtle1 with the name of carrot1
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "turtle1", "carrot1"));
+    rate.sleep();
+
+}
+return 0;
+};
+```
+
+فراموش نشود که کد زیر در انتهای فایل CMakeList.txt اضافه شود:
+
+```c
+add_executable(frame_tf_broadcaster src/frame_tf_broadcaster.cpp)
+target_link_libraries(frame_tf_broadcaster ${catkin_LIBRARIES})
+```
+
+می توان از این tf جدید در جاهای مختلف استفاده کرد، برای مثال می توان در برنامه دنبال روی لاکپشت ها از carrot1 بجای turtle1 بهره ببریم. این فایل را هم به لانچ فایل اضافه می کنیم:
+
+```xml
+<launch>
+    <!-- Turtlesim Node-->
+    <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output= "screen"/>
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster" args="/turtle1" name="turtle1_tf_broadcaster" />
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster" args="/turtle2" name="turtle2_tf_broadcaster" />
+
+    <node pkg="learning_tf" type="turtle_tf_listener" name="turtle2_tf_listener" />
+
+    <node pkg="learning_tf" type="frame_tf_broadcaster" name="frame_tf_broadcaster" />
+</launch>
+```
+
+حال برنامه را اجرا می کنیم. خروجی به شکل زیر خواهد بود:
+
+![خروجی تصویری](image-10.png)
+
+فرآیند اضافه کردن فریم با کمک پایتون نیز کاملا مشابه است، یک فایل پایتون با نام frame_tf_broadcaster.py ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم:
+
+```py
+#!/usr/bin/env python3
+import roslib
+roslib.load_manifest('learning_tf')
+
+
+import rospy
+import tf
+
+
+if __name__ == '__main__':
+    rospy.init_node('fixed_tf_broadcaster')
+    br = tf.TransformBroadcaster()
+    rate = rospy.Rate(10.0)
+    while not rospy.is_shutdown():
+        br.sendTransform((0.0, 2.0, 0.0),
+                         (0.0, 0.0, 0.0, 1.0),
+                         rospy.Time.now(),
+                         "carrot1",
+                         "turtle1")
+        rate.sleep()
+
+```
+
+سپس داخل لانچ فایل پایتونی را به این شکل تغییر می دهیم:
+
+```xml
+<launch>
+    <!-- Turtlesim Node-->
+    <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output="screen"/>
+
+
+    <node name="turtle1_tf_broadcaster" pkg="learning_tf" type="turtle_tf_broadcaster.py" respawn="false" output="screen" >
+      <param name="turtle" type="string" value="turtle1" />
+    </node>
+    <node name="turtle2_tf_broadcaster" pkg="learning_tf" type="turtle_tf_broadcaster.py" respawn="false" output="screen" >
+      <param name="turtle" type="string" value="turtle2" />
+    </node>
+
+
+    <node name="listener" pkg="learning_tf" type="turtle_tf_listener.py" respawn="false" output="screen" >
+    </node>
+
+
+    <node name="frame_tf_broadcaster" pkg="learning_tf" type="frame_tf_broadcaster.py" respawn="false" output="screen" />
+
+</launch>
+```
+
+گاها نیاز می شود که یک tf ثابت نسبت به یک tf دیگر ایجاد کنیم. همانند مثال قبلی که carrot1 را نسبت به turtle1 تعریف کردیم. برای تعریف اینگونه از tf ها استاتیک (که نسبت به یک فریم دیگر کاملا ثابت هستند) نیاز به تعریف برنامه مستقل نیست و می توان با کمک لانچ فایل این کار را انجام داد برای مثال نود زیر یک فریم ثابت نسبت به فریم turtle1 تعریف می کند که موقعیت نسبتی آن با ترتیب x y z برابر 0 2 0 و مشخصات کواتریون 0 0 0 1 تعریف می شود (w=1) و این کار با فرکانس 100 صورت می پذیرید، نام فریم جدید هم carrot1 است:
+
+```xml
+<node pkg="tf" type="static_transform_publisher" args="0 2 0 0 0 0 1 turtle1 carrot1 100 name="frame1" />
+```
+
+بهتر است همیشه بجای اویلر از کواترنیون استفاده کنیم. استانداراد راس در محیط سه بعدی کواترنیون است.
+
+در ادامه در مورد rviz صحبت شد که یک ابزار گرافیکی برای نمایش داده ها می باشد. با کمک کامند Rviz می توانید این محیط را باز نمایید. در شاخه کناری Display می توانید لیست موارد نمایشی را کنترل کنید. حتما Fixed Frame را بر روی world قرار دهید و با دکمه Add لیست tf ها را اضافه نمایید. خروجی به شکل زیر خواهد بود:
+
+![محیط rviz](image-11.png)
+
+برای ذخیره همین ستاپ نمایشی کافیست از منوی File گزینه Save Config As .. اقدام نمایید. بهتر است یک پوشه در پکیج خود تحت عنوان rviz ایجاد کنیم و فایل های rviz را در داخل آن ذخیره کنیم. برای اضافه کردن نود rviz به فایل لانچ به ترتیب زیر عمل می کنیم:
+
+```xml
+<launch>
+    <!-- Turtlesim Node-->
+    <node pkg="turtlesim" type="turtlesim_node" name="sim"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="teleop" output= "screen"/>
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster" args="/turtle1" name="turtle1_tf_broadcaster" />
+
+
+    <node pkg="learning_tf" type="turtle_tf_broadcaster" args="/turtle2" name="turtle2_tf_broadcaster" />
+
+    <node pkg="learning_tf" type="turtle_tf_listener" name="turtle2_tf_listener" />
+
+
+    <node pkg="learning_tf" type="frame_tf_broadcaster" name="frame_tf_broadcaster" />
+
+    <node pkg="rviz" type="rviz" name="vizualiator" args="-d $(find learning_tf)/rviz/turtle.rviz" />
+
+</launch>
+```
+
+برای مشاهده جزئیات بیشتر در مورد tf به داکیومنت راس مراجعت نمایید
+
+http://wiki.ros.org/tf/Tutorials
