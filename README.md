@@ -2012,3 +2012,646 @@ if __name__ == '__main__':
 برای مشاهده جزئیات بیشتر در مورد tf به داکیومنت راس مراجعت نمایید
 
 http://wiki.ros.org/tf/Tutorials
+
+## زمان در ROS
+
+در ابتدای این بخش قصد داریم تا در مورد زمان ها صحبت کنیم. برای دریافت زمان حال (آبجکت begin) در سی پلاس پلاس به ترتیب زیر عمل می کنیم:
+
+```c++
+ros::Time begin = ros::Time::now();
+ROS_INFO("Seconds from 1/1/1970 = %d and nanaoSeconds = %d", begin.sec, begin.nsec)
+```
+
+برای دریافت دریافت زمان حال در زبان پایتون به شکل زیر عمل می کنیم:
+
+```py
+now = rospy.get_rostime()
+rospy.loginfo("Current time %i %i", now.secs, now.nsecs)
+```
+
+برای دریافت به صورت متغیر float در سی پلاس پلاس به شکل زیر:
+
+```c++
+double secs =ros::Time::now().toSec();
+```
+
+و در پایتون به شکل زیر عمل می کنیم:
+
+```py
+seconds = rospy.get_time()
+```
+
+برای تعریف یک زمان خاص (Time) (توجه شود که با Duration متفاوت است) خاص می توانید از تابع دو حالت زیر استفاده کنید:
+
+```c++
+ros::Time a_little_after_the_beginning(0.001); // in Seconds
+
+// or
+
+ros::Time a_little_after_the_beginning(0, 1000000); // in (Seconds, nanoSeconds)
+```
+
+در پایتون نیز به شکل زیر ایجاد می شود:
+
+```py
+t = rospy.Time.from_sec(123456.789) # 123456 seconds and 789000000 nano-seconds
+
+# or
+
+t = rospy.Time(12345, 6789) # 12345 seconds and 6789 nano-seconds
+```
+
+اکنون که به نحوه ایجاد یک زمان خاص یا به اصطلاح Time پرداختیم می توانیم به نحوه ایجاد یک بازه زمانی خاص یا به اصطلاح Duration بپردازیم. برای مثال در کد سی پلاس پلاس زیر 60.1 ثانیه را به دو روش در آبجکت five_seconds ذخیره کرده ایم:
+
+```c++
+ros::Duration five_seconds(60.1);
+
+// or
+
+ros::Duration five_seconds(60, 100000000);
+```
+
+در پایتون نیز به شکل زیر است:
+
+```py
+d = rospy.Duration.from_sec(60.1)
+```
+
+برای مثال از Duration می توانیم برای متوقف کردن برنامه برای بازه زمانی خاص استفاده کنیم. برای مثال کد زیر در سی پلاس پلاس برنامه را برای 10 ثانیه متوقف می کند:
+
+```c++
+ros::Duration(0.5).sleep(); // sleep for half a second
+```
+
+در پایتون به دو شکل زیر امکان پذیر است:
+
+```py
+# sleep for 10 seconds
+rospy.sleep(10.)
+
+# or
+
+# sleep for duration
+d = rospy.Duration(10, 0)
+rospy.sleep(d)
+```
+
+همچنین می توانیم به صورت فرکانسی از زمان استفاده کنیم (مثلا بگویم برنامه با فرکانسی خاص متوقف شود) که در اینجا از Rate بهره می بریم. کد سی پلاس پلاس به ترتیب زیر است:
+
+```c++
+ros::Rate r(10); // 10 hz
+while (ros::ok())
+{
+  ... do some work ...
+  r.sleep();
+}
+```
+
+و کد پایتون به ترتیب زیر است:
+
+```py
+r = rospy.Rate(10) # 10hz
+while not rospy.is_shutdown():
+    pub.publish("hello")
+    r.sleep()
+```
+
+توجه شود که اگر منطق های زیر در اعمال جبری جمع و تفریق زمانی برقرار است:
+
+```
+D = Duration
+T = Time
+
+---
+
+D+D = D
+D-D = D
+T+D = T
+T-D = T
+T-T = D
+T+T = Not Defined
+```
+
+در ادامه در مورد تایمر را ها صحبت می کنیم. تایمر زمانی استفاده می شود که ما قصد داریم یک کار را با فاصله زمانی خاص انجام دهیم. برای مثال متد زیر در بازه زمانی تعریف شده برای ما تابع timerCallback را اجرا می کند:
+
+```c++
+ros::Timer timer = nh.createTimer(ros::Duration(0.1), timerCallback);
+```
+
+همچنین می توانیم تایمر را به گونه ای تعریف کنیم که فقط یک بار اجرا شود، فقط کافی است که bool_oneshot را برابر false قرار دهیم:
+
+```c++
+ros::Timer ros::NodeHandle::createTimer(ros::Duration period, <callback>, bool oneshot = false);
+```
+
+همچنین اگر بخواهیم یک تایمر را متوقف کنیم می توانیم از دستور زیر استفاده کنیم:
+
+```py
+timer.stop()
+```
+
+همچنین برای شروع مجدد تایمر می توانیم از تابع .start() استفاده کنیم. پس در جمع بندی یک تابع کال بک داریم و یک تایمر که آن تابع را در بازه زمانی که ما برایش مشخص کردیم اجرا می کند:
+
+```c++
+
+void callback(const ros::TimerEvent& event)
+{
+...
+}
+
+...
+ros::Timer timer = nh.createTimer(ros::Duration(0.1), callback);
+```
+
+اگر قرار بود از متدی به عنوان تابع کال بک استفاده کنیم (برای مثال متد callback از کلاس foo که آبجکت foo_object از این کلاس است) کافی است که به شیوه زیر متد کال بک و آبجکت را به تایمر بدهیم:
+
+```c++
+class Foo
+{
+public:
+  void Foo::callback(const ros::TimerEvent& event)
+  {
+  ...
+  }
+
+  ros::Timer timer;
+};
+
+...
+// then, during initialization, etc
+timer = nh.createTimer(ros::Duration(0.1), &Foo::callback, &foo_object);
+
+...
+Foo foo_object;
+```
+
+اکنون به سراغ ایجاد این تایمرها به زبان پایتون می رویم:
+
+```py
+def my_callback(event):
+print 'Timer called at ' + str(event.current_real)
+
+rospy.Timer(rospy.Duration(2), my_callback)
+```
+
+برای متوقف کردن تایمر می توانیم از متد زیر بهره ببریم:
+
+```py
+t = rospy.Timer(rospy.Duration(2), my_callback)
+t.shutdown()
+```
+
+## اجرای تحت شبکه ROS
+
+برای راه اندازی راس در شبکه کافی است بدانیم که هسته در کامیپوتر master اجرا می شود و امکان پخش کردن نودها در کامیپوتر های slave امکان پذیر است.
+
+```
+این بخش ناقص است و تکمیل خواهد شد
+```
+
+## ارتباط Action در محیط ROS
+
+در ادامه قصد داریم در مورد نحوه ارتباطی actionlib توضیح بدهیم. تفاوت اکشن لیب با سرویس این است که در سرویس ها هنگامی که request ارسال می شود، تا بازگشت respond برنامه متوقف است ولی در actionlib درخواست ارسال شده ولی تا زمان بازگشت پاسخ، برنامه متوقف نمی شود و برنامه اصلی در حال اجرا می ماند. حتی در این نوع ارتباطی تا قبل از بازگشت پاسخ، سرویس actionlib می تواند فیدبک بدهد.
+
+نکته: در این روش اکشن، سرور و کلاینت را داریم؛ به پیامی که از نود کلاینت به سرور ارسال می شود هدف (یا Goal) می گویند و به پیامی که سرور در جواب به کلاینت ارسال می کند نتیجه (یا Result) می گویند. همچنین همانگونه که ذکر شد، در روش اکشن سرور تا قبل ارسال نتیجه می تواند بازخوردهای لحظه ای (یا Feedback) نیز بدهد.
+
+در ادامه به نحوه ایجاد سرور و کلاینت اکشن در زبان های پایتون و سی پلاس پلاس خواهیم پرداخت. بهتر است برای اینکار یک پکیج مجزاء بسازیم تا کد هایمان قاطی نشوند:
+
+```bash
+$ cd catkin_ws/
+$ catkin_create_pkg actionlib_tutorials actioblib rospy roscpp message_generation std_msgs actionlib_msgs
+```
+
+توجه شود که در اکشن ها نیز ما نوع مسیج خود را همانند سرویس ها طراحی می کنیم (ساختار هدف، بازخورد و نتیجه را مشخص می کنیم)، پس خوب است یک پوشه برای این مسیج های اختصاصی با نام action در پکیج خود ایجاد کنیم:
+
+```bash
+$ mkdir actionlib_tutorials/action
+```
+
+در مثالی که قصد پیاده سازی آنرا داریم، می خوایم یک اکشن ایجاد کنیم که برای ما سری فیبوناچی را ارسال کند. بدین منظور مسیج اختصاصی این اکشن را ایجاد میکنیم:
+
+```bash
+$ touch actionlib_tutorials/action/Fibonacci.action
+```
+
+درون این فایل ساختار هدف، فیدبک و نتیجه را مشخص می کنیم:
+
+```py
+#goal definition
+int32 order
+---
+#result definition
+int32[] sequence
+---
+#feedback
+int32[] sequence
+```
+
+در کد بالا order به ما اکشن می فهماند که تا چه عددی از سری فیبوناچی را باید محاسبه کند که عدد تکی int32 را برای نوع آن قرار داده ایم، برای بدست آوردن نتیجه از یک آرایه int32 با نام sequence استفاده می کنیم و برای فیدبک نیز از همان sequence استفاده میکنیم. حالا به فایل CMakeList.txt می رویم، حتما چک کنید که پکیج های زیر موجود باشند:
+
+```
+find_package(catkin REQUIRED COMPONENTS
+  actioblib
+  actionlib_msgs
+  message_generation
+  roscpp
+  rospy
+  std_msgs
+)
+```
+
+در بخش مربوط به اکشن هم متد add_action_files() را از حالت کامنت در می آوریم و نام فایل اکشن موجود در پوشه action را اضافه می کنیم:
+
+```
+## Generate actions in the 'action' folder
+ add_action_files(
+  FILES
+  Fibonacci.action
+ )
+```
+
+در بخش generation_message هم actionlib_msgs و std_msgs را از حالت کامنت در می آوریم:
+
+```
+## Generate added messages and services with any dependencies listed here
+ generate_messages(
+   DEPENDENCIES
+   actionlib_msgs
+   std_msgs
+ )
+```
+
+در بخش catkin_package هم خط مربوط به اکشن را به صورت زیر از حالت کامت در می آوریم:
+
+```
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES actionlib_tutorials
+  CATKIN_DEPENDS actioblib actionlib_msgs message_generation roscpp rospy std_msgs
+#  DEPENDS system_lib
+)
+```
+
+این فایل را ذخیره کرده و به داخل فایل package.xml می رویم. در این فایل در داخل تگ <package> در زیر پیش نیاز std_msg، پیش نیاز زیر را نیز وارد می کنیم:
+
+```xml
+<?xml version="1.0"?>
+<package format="2">
+  <name>actionlib_tutorials</name>
+  <version>0.0.0</version>
+  <description>The actionlib_tutorials package</description>
+  <maintainer email="ahmad@todo.todo">ahmad</maintainer>
+  <license>TODO</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>actioblib</build_depend>
+  <build_depend>actionlib_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_export_depend>actioblib</build_export_depend>
+  <build_export_depend>actionlib_msgs</build_export_depend>
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>rospy</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <exec_depend>actioblib</exec_depend>
+  <exec_depend>actionlib_msgs</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>message_generation</exec_depend>
+
+
+
+  <export></export>
+</package>
+```
+
+در این مرحله قصد داریم نحوه ایجاد اکشن سرور را با کمک سی پلاس پلاس ایجاد کنیم، در پوشه src یک فایل سی پلاس پلاس با نام fibonacci_server.cpp ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم:
+
+```c++
+#include <ros/ros.h>
+#include <actionlib/server/simple_action_server.h>
+#include <actionlib_tutorials/FibonacciAction.h>
+
+
+// Create A Class For Run This Action Server
+class FibonacciAction
+{
+  protected: // Define Protected Properties
+    ros::NodeHandle nh_; // Define node name
+    actionlib::SimpleActionServer<actionlib_tutorials::FibonacciAction> as_; // Define action server
+    std::string action_name_; // Define action name
+    actionlib_tutorials::FibonacciFeedback feedback_; // Define Action Feed-back
+    actionlib_tutorials::FibonacciResult result_; // Define Action Result
+
+  public:
+    FibonacciAction(std::string name) : // Class Constructer Input: name
+      // Create action server and setting properties
+      as_(nh_, name, boost::bind(&FibonacciAction::executeCB, this, _1), false),
+    action_name_(name)
+    {
+      as_.start(); // Run Server
+    }
+    ~FibonacciAction(void){ }
+
+
+    // Call-Back Function: executeCB -> Input: goal
+    void executeCB(const actionlib_tutorials::FibonacciGoalConstPtr &goal)
+    {
+       ros::Rate r(1); // 1Hz Freq.
+       bool success = true;
+
+
+       // Calculate Fibbonacci ...
+       feedback_.sequence.clear();
+       feedback_.sequence.push_back(0); // push_back puts item in "sequence" array
+       feedback_.sequence.push_back(1);
+       for(int i=1; i<=goal->order; i++)
+       {
+          if (as_.isPreemptRequested() || !ros::ok())
+          {
+            ROS_INFO("%s: Preempted", action_name_.c_str());
+            as_.setPreempted();
+            success = false;
+            break;
+          }
+         feedback_.sequence.push_back(feedback_.sequence[i] + feedback_.sequence[i-1]);
+         as_.publishFeedback(feedback_);
+         r.sleep();
+       }
+       if(success)
+       {
+         result_.sequence = feedback_.sequence;
+         as_.setSucceeded(result_); // Send Results
+       }
+    }
+};
+
+
+
+// Main Function
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "fibonacci");
+
+
+  FibonacciAction fibonacci("fibonacci");
+  ros::spin();
+
+
+  return 0;
+}
+```
+
+در کد بالا متد push_back یک آیتم جدید به ته آرایه sequence اضافه می کند. فراموش نشود که کد زیر را در آخر فایل CmakeList.txt اضافه نمایید:
+
+```c++
+add_executable(fibonacci_server src/fibonacci_server.cpp)
+
+target_link_libraries(
+  fibonacci_server
+  ${catkin_LIBRARIES}
+)
+
+add_dependencies(
+  fibonacci_server
+  ${actionlib_tutorials_EXPORTED_TARGETS}
+)
+```
+
+حال همه فایل ها را ذخیره کرده و از ورک اسپیس را یک دور با کمک catkin_make کامپایل می کنیم. در نسخه راس نئوتیک دیگر به متد سوم نیاز نیست و فقط همان دو خط اول کفایت می کند:
+
+```c++
+add_executable(fibonacci_server src/fibonacci_server.cpp)
+
+target_link_libraries(
+  fibonacci_server
+  ${catkin_LIBRARIES}
+)
+```
+
+حال هسته را اجرا و در سپس این سرور را اجرا کرده و لیست تاپیک ها را با کمک کامند های زیر به صورت مرتب شده می بینیم:
+
+```bash
+$ roscore
+$ rosrun actionlib_tutorials fibonacci_server
+$ rostopic list -v
+```
+
+خروجی به شکل زیر خواهد بود:
+
+![خروجی](image-12.png)
+
+در ادامه نحوه ایجاد سرور به زبان پایتون را توضیح می دهیم و سپس به سراغ ایجاد کلاینت به زبان پایتون و سی پلاس پلاس می رویم. اکنون با کمک کامندهای زیر پوشه اسکریپ و فایل پایتونی سرور را ایجاد می کنیم و به آن قابلیت اجرایی شدن می دهیم:
+
+```bash
+$ mkdir scripts && touch scripts/fibonacci_server.py
+$ cd scripts/
+$ chmod +x fibonacci_server.py
+```
+
+درون فایل کد پایتون زیر را قرار می دهیم:
+
+```py
+#! /usr/bin/env python3
+
+import rospy
+import actionlib
+import actionlib_tutorials.msg
+
+
+class FibonacciAction(object):
+    _feedback = actionlib_tutorials.msg.FibonacciFeedback() # Feed-Back Message
+    _result = actionlib_tutorials.msg.FibonacciResult() # Result Message
+    def __init__(self, name): # Costructor Fcn.
+        # Name, Create and Start server
+        self._action_name = name
+        self._as = actionlib.SimpleActionServer(self._action_name, actionlib_tutorials.msg.FibonacciAction, execute_cb=self.execute_cb, auto_start = False)
+        self._as.start()
+
+    # Define Call-Back Fcn.
+    def execute_cb(self, goal):
+        r = rospy.Rate(1) # 1 Hz
+        success = True
+        self._feedback.sequence = []
+        self._feedback.sequence.append(0) # append() add an item to end of "sequence" list
+        self._feedback.sequence.append(1)
+
+        # Calculting The Fib. Series
+        for i in range(1, goal.order):
+            if self._as.is_preempt_requested():
+                rospy.loginfo('%s: Preempted' % self._action_name)
+                self._as.set_preempted()
+                success = False
+                break
+            self._feedback.sequence.append(self._feedback.sequence[i] + self._feedback.sequence[i-1])
+            self._as.publish_feedback(self._feedback)
+            r.sleep()
+        if success:
+            self._result.sequence = self._feedback.sequence
+            rospy.loginfo('%s: Succeeded' % self._action_name)
+            self._as.set_succeeded(self._result)
+
+
+
+# Running Server
+if __name__ == '__main__':
+    rospy.init_node('fibonacci')
+    server = FibonacciAction(rospy.get_name())
+    rospy.spin()
+```
+
+خروجی مشابه برنامه سی پلاس پلاس خواهد بود. حال به سراغ ایجاد برنامه کلاینت با کمک سی پلاس پلاس می رویم. در داخل پوشه src یک فایل با نام fibonacci_client.cpp ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم:
+
+```c++
+#include <ros/ros.h>
+#include <actionlib/client/simple_action_client.h>
+#include <actionlib_tutorials/FibonacciAction.h>
+
+
+using namespace actionlib_tutorials;
+typedef actionlib::SimpleActionClient<FibonacciAction> Client; // Make Client
+
+
+// Done Call-Back Fcn.
+void doneCb(const actionlib::SimpleClientGoalState& state,const FibonacciResultConstPtr& result)
+{
+  ROS_INFO("Finished in state [%s]", state.toString().c_str());
+  ROS_INFO("Answer: %i", result->sequence.back());
+  ros::shutdown();
+}
+
+
+// Active Call-Back Fcn.
+void activeCb()
+{
+  ROS_INFO("Goal just went active");
+}
+
+
+// Feed-Back Call-Back Fcn.
+void feedbackCb(const FibonacciFeedbackConstPtr& feedback)
+{
+  ROS_INFO("Got Feedback of length %lu", feedback->sequence.size());
+}
+
+
+// Main Fcn.
+int main (int argc, char **argv)
+{
+  ros::init(argc, argv, "test_fibonacci_callback");
+
+
+  Client ac("fibonacci", true); // Connect Client To "fibonacci" Action
+
+
+  ROS_INFO("Waiting for action server to start.");
+  ac.waitForServer(); // Wait for Connecting to Action Server
+  ROS_INFO("Action server started, sending goal.");
+
+
+  FibonacciGoal goal; // Define Goal
+  goal.order = 20;
+
+
+  // Passing Call Back Fcn. for "Done", "Active or Start", "Feedback" status
+  ac.sendGoal(goal, &doneCb, &activeCb, &feedbackCb);
+
+
+  // Define 30s limit for doing the loop
+  bool finished_before_timeout = ac.waitForResult(ros::Duration(30.0));
+  ros::spin();
+  return 0;
+}
+```
+
+در فایل CMakeList.txt کد زیر را قرار می دهیم:
+
+```c
+add_executable(fibonacci_client src/fibonacci_client.cpp)
+
+target_link_libraries(
+  fibonacci_client
+  ${catkin_LIBRARIES}
+)
+```
+
+حال در شاخه اصلی از فایل یک دور کامپایل می گیریم و سپس با کمک دستور زیر کلاینت و سرور را اجرا می کنیم:
+
+```bash
+$ roscore
+$ rosrun actionlib_tutorials fibonacci_server
+$ rosrun actionlib_tutorials fibonacci_client
+```
+
+توجه شود که در خروجی کلاینت تا 20 امین عدد فیبوناچی را برای ما حساب می کند. خروجی:
+
+![خروجی](image-13.png)
+
+در ادامه این کلاینت را با کمک زبان پایتون ایجاد میکنیم. در پوشه scripts یک فایل با نام fibonacci_client.py ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم:
+
+```py
+#! /usr/bin/env python3
+import rospy
+import actionlib
+import actionlib_tutorials.msg
+
+
+# Define Active Call-Back (Start Fcn.)
+def active_cb():
+    print('active')
+
+
+# Define Feed-Back Call-Back
+def feedback_cb(feedback):
+    print(len(feedback.sequence))
+
+
+# Define Done Call-Back
+def done_cb(status, result):
+    print(status)
+    print(result)
+
+
+# Main Fcn.
+if __name__ == '__main__':
+       rospy.init_node('fibonacci_client_py') # init node
+
+
+       # Add Client
+       client = actionlib.SimpleActionClient('fibonacci', actionlib_tutorials.msg.FibonacciAction)
+       client.wait_for_server() # Wait For Client
+
+
+       # Define Goal
+       goal = actionlib_tutorials.msg.FibonacciGoal(order=20)
+
+
+       # Passing Call Back Fcn. for "Done", "Active or Start", "Feedback" status
+       client.send_goal(goal,done_cb,active_cb,feedback_cb)
+       client.wait_for_result()
+       #client.get_result()
+       #client.cancel_goal() # Stop Server
+```
+
+برای اجرا نیز به شرح زیر عمل می کنیم:
+
+```bash
+$ roscore
+$ rosrun actionlib_tutorials fibonacci_server.py
+$ rosrun actionlib_tutorials fibonacci_client.py
+```
+
+خروجی مشابه برنامه سی پلاس پلاس خواهد بود. توجه شود که در اکشن ها با کمک اعداد وضعیت نمایش داده می شود که در لیست زیر می توانید آنرا مشاهده نمایید:
+
+- 0 : Pending : سرور در حالت آماده به کار است
+- 1 : Active : پیام Goal دریافت شده و سرور در حالت انجام فرآیند است.
+- 2 : Preempted : پس از شروع فرآیند، عملیات کنسل شده است.
+- 3 : Succeeded : فرآیند با موفقیت به پایان رسیده است.
+- 4 : Aborted : پیام goal در حین فرآیند توسط سرور رد شده است.
+- 5 : Rejected : پیام goal قبل از اجرای فرآیند توسط سرور رد شده است.
+- 6 : Preempting : پیام goal توسط سرور دریافت شده ولی فرآیند در حال کنسل کردن کار است.
+- 7 : Recalling : سرور قبل از شروع فرآیند پیام کنسل را دریافت کرده ولی را شروع یا کنسل نکرده است.
+- 8 : Recalled : سرور قبل از شروع فرآیند پیام کنسل را دریافت کرده و فرآیند درست کنسل شده است.
+- 9 : Lost : پیام goal از بین رفته است.
