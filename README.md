@@ -2658,3 +2658,167 @@ $ rosrun actionlib_tutorials fibonacci_client.py
 - 7 : Recalling : سرور قبل از شروع فرآیند پیام کنسل را دریافت کرده ولی را شروع یا کنسل نکرده است.
 - 8 : Recalled : سرور قبل از شروع فرآیند پیام کنسل را دریافت کرده و فرآیند درست کنسل شده است.
 - 9 : Lost : پیام goal از بین رفته است.
+
+## تنظیم مجدد پارامترها با کمک Dynamic Reconfigure
+
+سیستم عامل ROS در واقع استفاده از کتابخانه و پکیج های مختلف و تنظیم پارامترهای مربوط به آنها می باشد. برای تنظیم این پارامترها، خود راس یک ابزار مناسب دارد به نام dynamic Reconfigure که امکان تعیین پارامتر های راس را به ما می دهد. برای تست این ابزار یک پکیج جدید ایجاد می کنیم (برای مثال dynamic_tuts):
+
+```bash
+$ cd catkin_ws/src
+$ catkin_create_pkg dynamic_tuts rospy roscpp dynamic_reconfigure
+```
+
+سپس وارد این پکیج شده و یک پوشه برای کانفیگ ها به نام cfg می سازیم تا لیست کانفیگ های دینامیک را در دخل این فولدر قرار دهیم. برای مثال یک فایل tuts.cfg ایجاد می کینم:
+
+```bash
+$ mkdir cfg && cd cfg
+$ touch tuts.cfg
+```
+
+در داخل فولدر tuts.cfg ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم (توجه شود که از همان زبان پایتون برای نگارش فایل های cfg استفاده می کنیم.
+
+```py
+#!/usr/bin/env python3
+PACKAGE = "dynamic_tutorials"
+
+# Import libs
+from dynamic_reconfigure.parameter_generator_catkin import *
+
+# Create Parameter Generator Obj
+gen = ParameterGenerator()
+
+# Define Parameters and add it to dyna-confg: name, type, level, description, default, *min, *max
+gen.add("int_param",    int_t,    0,   "An Integer parameter", 50,  0,   100)
+gen.add("double_param", double_t, 0,   "A double parameter",   .5,    0,   1)
+gen.add("str_param",    str_t,    0,   "A string parameter",   "Hello World")
+gen.add("bool_param",   bool_t,   0,   "A Boolean parameter",  True)
+
+# Drop-List Parameter (enum)
+size_enum = gen.enum([ gen.const("Small",      int_t, 0, "A small constant"),
+                       gen.const("Medium",     int_t, 1, "A medium constant"),
+                       gen.const("Large",      int_t,  2, "A large constant"),
+                       gen.const("ExtraLarge", int_t,  3, "An extra large constant")],
+                     "An enum to set size")
+
+# Add enum to dyna-confg
+gen.add("size", int_t, 0, "A size parameter which is edited via an enum",
+                     1, 0, 3, edit_method=size_enum)
+
+# End
+exit(gen.generate(PACKAGE, "dynamic_tutorials", "Tutorials"))
+```
+
+حتما با کمک کد زیر به فایل اجازه اجاره شدن بدهید:
+
+```bash
+$ chmod +x cfg/tuts.cfg
+```
+
+در فایل CMakeList.txt نیز در بخش مربوط به کانفیگ ها دستور زیر را از حالت کامنت در بیاورید و آدرس فایل کانفیگ ایجاد شده را بدهید:
+
+```
+## Generate dynamic reconfigure parameters in the 'cfg' folder
+generate_dynamic_reconfigure_options(
+  cfg/tuts.cfg
+#   cfg/DynReconf2.cfg
+ )
+```
+
+سپس به شاخه اصلی رفته catkin_make بگیرید. در ادامه یک فایل پایتونی ایجاد میکنیم که از این پارامترها ایجاد شده در بخش قبلی بتوانیم در داخل یک نود استفاده کنیم. یک پوشه scripts ایجاد کرده و در داخل آن یک فایل پایتونی با نام server.py در داخل آن ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم:
+
+```py
+#!/usr/bin/env python3
+import rospy
+from dynamic_reconfigure.server import Server
+from dynamic_tuts.cfg import tutsConfig
+
+# Call Back Fcn.
+def callback(config, level):
+    rospy.loginfo("""Reconfigure Request: {int_param}, {double_param},\
+          {str_param}, {bool_param}, {size}""".format(**config))
+    return config
+
+# Main Part
+if __name__ == "__main__":
+    rospy.init_node("dynamic_tutorials", anonymous = False)
+
+
+    srv = Server(tutsConfig, callback)
+    rospy.spin()
+```
+
+لازم است حتما به این برنامه قابلیت اجرایی بدهیم. توجه شود که از طریق متغیر level برنامه ریکانفیگر متوجه تغییرات در پارامتر ها می شود. حال هسته راس، این برنامه سرور و برنامه rqt_reconfigure را اجرا می کنیم و تغییر پارامترها را تست می کنیم:
+
+```bash
+$ roscore
+$ rosrun dynamic_tuts server.py
+$ rosrun rqt_reconfigure rqt_reconfigure
+```
+
+خروجی به شکل زیر خواهد بود:
+
+![خروجی](image-14.png)
+
+توجه شود که می توان چندین فایل کانفیگ ایجاد کرد و پارامتر آنها را از طریق rqt_reconfigure کنترل کرد. با هر بار تغییر دادن یک مقدار در rqt سرور لاگ ایجاد می کند (توجه شود حتما سرور باید اجرا شود که کانفیگ ایجاد شده در rqt قرار بگیرد.)
+
+حالا همین کد را در داخل سی پلاس پلاس اجرا می کنیم. در داخل پوشه src یک فایل به نام server.cpp ایجاد می کنیم و کد زیر را قرار می دهیم. (روند مشابه همان پایتون هست):
+
+```c++
+#include <ros/ros.h>
+#include <dynamic_reconfigure/server.h>
+#include <dynamic_tuts/tutsConfig.h>
+
+
+void callback(dynamic_tuts::tutsConfig &config, uint32_t level) {
+  ROS_INFO("Reconfigure Request: %d %f %s %s %d",
+            config.int_param, config.double_param, config.str_param.c_str(),
+            config.bool_param?"True":"False", config.size);
+}
+
+
+int main(int argc, char **argv) {
+  ros::init(argc, argv, "dynamic_tuts");
+  dynamic_reconfigure::Server<dynamic_tuts::tutsConfig> server;
+  dynamic_reconfigure::Server<dynamic_tuts::tutsConfig>::CallbackType f;
+  f = boost::bind(&callback, _1, _2);
+  server.setCallback(f);
+  ROS_INFO("Spinning node");
+  ros::spin();
+  return 0;
+}
+```
+
+خروجی مشابه پایتون خواهد بود. تا به اینجای کار تمام برنامه هایی که ایجاد کرده ایم سرور بودند و به امکان ایجاد تغییرات می دادند ولی در صورتی که بخواهیم تغییرات را مشاهده نماییم نیاز به ایجاد یک برنامه کلاینت است که آنرا با کمک پایتون ایجاد می کنیم. یک فایل پایتونی در پوشه script با نام client.py ایجاد کرده و قابلیت اجرایی به آن می دهیم. درون این فایل کد زیر را قرار می دهیم:
+
+```py
+#!/usr/bin/env python3
+import rospy
+import dynamic_reconfigure.client
+
+
+def callback(config):
+    rospy.loginfo("Config set to {int_param}, {double_param}, {str_param}, {bool_param}, {size}".format(**config))
+
+
+if __name__ == "__main__":
+    rospy.init_node("dynamic_client")
+    client = dynamic_reconfigure.client.Client("dynamic_tutorials", timeout=30, config_callback=callback)
+
+
+    r = rospy.Rate(1)
+
+
+    x = 0
+    b = False
+
+
+    while not rospy.is_shutdown():
+        x = x+1
+        if x>10:
+            x=0
+        b = not b
+        client.update_configuration({"int_param":x, "double_param":(float(1)/(x+1)), "str_param":str(rospy.get_rostime()), "bool_param":b, "size":1})
+        r.sleep()
+```
+
+در ادامه هسته راس، سرور و کلاینت را راه اندازی می کنیم. همچنی برنامه rqt_reconfigure را نیز اجرا می کنیم. مشاهده می شود که پارامترها تغییر می کنند.
