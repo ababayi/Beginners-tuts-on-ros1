@@ -2823,3 +2823,451 @@ if __name__ == "__main__":
 ```
 
 در ادامه هسته راس، سرور و کلاینت را راه اندازی می کنیم. همچنی برنامه rqt_reconfigure را نیز اجرا می کنیم. مشاهده می شود که پارامترها تغییر می کنند.
+
+## آشنایی با محیط rviz و اجرای چند مثال
+
+نرم افزار rviz یک نرم افزار برای نمایش گذاشتن داده های مختلف می باشد. برخی این نرم افزار را با یک نرم افزار شبیه ساز جابجا می گیرند در حالیکه وظیفه rviz تنها بصری کردن داده ها می باشد و مناسب شبیه سازی مدل های رباتیکی نمی باشد. توجه شود که واحدهای استاندارد در داخل rviz همان واحد های استاندارد ros می باشد. برای اجرا کردن rviz کافی است کد زیر را در داخل ترمینال اجرا کنید:
+
+```bash
+$ roscore
+$ rviz
+```
+
+نرم افزار rviz برایتان باز خواهد شد. این نرم افزار از بخش های مختلفی تشکیل شده است که می توان به مهمترین آن یعنی بهش display اشاره کرد. همچنین از طریق منوی panel می توانید بخش های مختلف rviz را آشکار/پنهان کنید.
+
+![محیط آرویز](image-15.png)
+
+برای اضافه کردن یک دیتا یا نمایشگر خاص با کمک گزینه Add در پنل Display می توانید عمل افزودن را انجام دهید. به دو روش می توانید آیتم ها بصری را اضافه نمایید. یکی با کمک نوع آیتم (By display type) و یکی هم با کمک تاپیک ها (By topic) که در شکل زیر می توانید مشاهده نمایید:
+
+![گزینه اضافه کردن آیتم](image-16.png)
+
+با کمی سعی و خطا می توانید با سایر آپشن های این محیط آشنا شوید (که البته از اهمیت کمتری برخوردار هستن). در ادامه می خواهیم یک برنامه ایجاد کنیم یک تعداد داده گرافیکی ایجاد کند و ما آن داده ها گرافیکی را در rviz مشاهده کنیم. به پوشه catkin_ws/src می رویم و یک پکیج جدید به نام using_markers ایجاد می کنیم که در آن از rocpp و visualization_msgs استفاده شده است. در ادامه به داخل پوشه src پکیج ایجاد شده می رویم و یک فایل جدید به نام basic_shapes.cpp ایجاد می کنیم:
+
+```bash
+$ catkin_create_pkg using_markers roscpp visualization_msgs rospy
+$ touch basic_shapes.cpp
+```
+
+در داخل این فایل برنامه زیر را قرار می دهیم:
+
+```c++
+#include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
+
+
+int main( int argc, char** argv )
+{
+  ros::init(argc, argv, "basic_shapes"); // make a node
+  ros::NodeHandle n;
+  ros::Rate r(1); // 1 Hz Freq.
+
+
+  // Create a topic with the name of "visualization_marker" contains the marker datas
+  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
+
+
+  // Create a cube marker
+  uint32_t shape = visualization_msgs::Marker::CUBE;
+
+
+  // Main Loop
+  while (ros::ok())
+  {
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "/my_frame"; // Pose Origin
+    marker.header.stamp = ros::Time::now(); // Time Origin
+
+
+    marker.ns = "basic_shapes"; // Name
+    marker.id = 0; // id
+    marker.type = shape;
+    marker.action = visualization_msgs::Marker::ADD; // Action Add to visualization_msgs::Marker
+
+
+    // Position of cube
+    marker.pose.position.x = 0;
+    marker.pose.position.y = 0;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+
+
+    // Marker Scale
+    marker.scale.x = 1.0;
+    marker.scale.y = 1.0;
+    marker.scale.z = 1.0;
+
+
+    // Marker Color
+    marker.color.r = 0.0f; // red = 0
+    marker.color.g = 1.0f; // green = 1
+    marker.color.b = 0.0f; // blue = 0
+    marker.color.a = 1.0; // opacity = 1
+    marker.lifetime = ros::Duration();
+
+
+    // Wait for a subscriber (rviz)
+    while (marker_pub.getNumSubscribers() < 1)
+    {
+      if (!ros::ok())
+      {
+        return 0;
+      }
+      ROS_WARN_ONCE("Please create a subscriber to the marker");
+      sleep(1);
+    }
+
+
+    // Publish marker data
+    marker_pub.publish(marker);
+
+
+    // Shape Loop
+    switch (shape)
+    {
+    case visualization_msgs::Marker::CUBE:
+      shape = visualization_msgs::Marker::SPHERE;
+      break;
+    case visualization_msgs::Marker::SPHERE:
+      shape = visualization_msgs::Marker::ARROW;
+      break;
+    case visualization_msgs::Marker::ARROW:
+      shape = visualization_msgs::Marker::CYLINDER;
+      break;
+    case visualization_msgs::Marker::CYLINDER:
+      shape = visualization_msgs::Marker::CUBE;
+      break;
+    }
+    r.sleep();
+  }
+}
+
+```
+
+در برنامه بالا با استفاده از مارکرها اشکالی را در محیط rviz به نمایش گذاشتیم. توجه شود که حتما fixed frame را بر روی iframe قرار دهید. توجه شود که کد زیر را در داخل فایل CMakeList.txt قرار دهید:
+
+```
+add_executable(basic_shapes src/basic_shapes.cpp)
+target_link_libraries(basic_shapes ${catkin_LIBRARIES})
+```
+
+با اجرای هسته راس و همچنین برنامه بالا و برنامه rviz خروجی را مشاهده می کنیم:
+
+![خروجی](image-17.png)
+
+در ادامه در مورد point ، line-stream و line-list صحبت میکنیم. همانگونه که مشخص است point ها نقاط مشخصی از فضا هستند که با x,y,z مشخص می شوند. line-stream هم یک خط است که از میان چند نقطه عبور می کند. line-list هم به مجموعه از خط ها می گویند که نقاط مختلف را به هم متصل می کنند. در ادامه یک فایل با نام point_and_lines.cpp ایجاد می کنیم و برنامه زیر را در داخل آن قرار می دهیم (یکی دیگر از مثال های سایت خود راس):
+
+```c++
+#include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
+#include <cmath>
+
+
+int main( int argc, char** argv )
+{
+  ros::init(argc, argv, "points_and_lines"); // Make A Node
+  ros::NodeHandle n;
+
+
+  // Create A Publisher Topic
+  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
+  ros::Rate r(30); // 30Hz
+  float f = 0.0;
+  while (ros::ok())
+  {
+    // Create points, line_strip, line_list
+    visualization_msgs::Marker points, line_strip, line_list;
+    points.header.frame_id = line_strip.header.frame_id = line_list.header.frame_id = "my_frame";
+    points.header.stamp = line_strip.header.stamp = line_list.header.stamp = ros::Time::now();
+    points.ns = line_strip.ns = line_list.ns = "points_and_lines";
+    points.action = line_strip.action = line_list.action =  visualization_msgs::Marker::ADD;
+
+
+    // Make it non-rotate
+    points.pose.orientation.w = line_strip.pose.orientation.w =  line_list.pose.orientation.w = 1.0;
+
+
+    // Id
+    points.id = 0;
+    line_strip.id = 1;
+    line_list.id = 2;
+
+
+    // Define Type
+    points.type = visualization_msgs::Marker::POINTS;
+    line_strip.type = visualization_msgs::Marker::LINE_STRIP;
+    line_list.type = visualization_msgs::Marker::LINE_LIST;
+
+
+    // Scale
+    points.scale.x = 0.2;
+    points.scale.y = 0.2;
+
+
+    line_strip.scale.x = 0.1;
+    line_list.scale.x = 0.1;
+
+
+    // Color
+    points.color.g = 1.0f;
+    points.color.a = 1.0;
+
+
+    line_strip.color.b = 1.0;
+    line_strip.color.a = 1.0;
+
+
+    line_list.color.r = 1.0;
+    line_list.color.a = 1.0;
+
+
+    // Make sinudsial wave
+    for (uint32_t i = 0; i < 100; ++i)
+    {
+      float y = 5 * sin(f + i / 100.0f * 2 * M_PI);
+      float z = 5 * cos(f + i / 100.0f * 2 * M_PI);
+
+
+      geometry_msgs::Point p;
+      p.x = (int32_t)i - 50;
+      p.y = y;
+      p.z = z;
+
+
+      points.points.push_back(p); // Append
+      line_strip.points.push_back(p);
+
+
+      line_list.points.push_back(p);
+      p.z += 1.0;
+      line_list.points.push_back(p);
+    }
+
+
+
+    // Publish data
+    marker_pub.publish(points);
+    marker_pub.publish(line_strip);
+    marker_pub.publish(line_list);
+
+
+    r.sleep();
+
+
+    f += 0.04; // Offset
+  }
+}
+```
+
+در فایل CMakeList.txt هم کد زیر را اضافه می کنیم:
+
+```
+add_executable(point_and_lines src/point_and_lines.cpp)
+target_link_libraries(point_and_lines ${catkin_LIBRARIES})
+```
+
+اکنون برنامه را اجرا میکنیم:
+
+```bash
+$ roscore
+$ rosrun using_markers point_and_lines
+$ rviz
+```
+
+خروجی به شکل زیر خواهد بود:
+
+![خروجی](image-18.png)
+
+خروجی دسته پوینت و لاین استریم خواهد بود. توجه شود که اگر در راس ملودیک هستید حتما قبل از فریم ها از بک اسلش (/) استفاده نمایید.
+
+نقاط سبز پوینت ها هستند، خطوط آبی لاین استریم هستند و خطوط قرمز لاین لیست هستند.
+
+در صورتیکه بخواهیم از محیط Rviz اطلاعاتی برای محیط راس ارسال کنیم، نیاز است تا با interactive markers کار کنیم. این مارکرها از کنترلرهای مختلفی ایجاد شده اند. در ادامه یک سرور ایجاد می کنیم که حاوی یک interactive marker می باشد. یک برنامه سی پلاس پلاس با نام simple_interactive_marker.cpp ایجاد می کنیم و کد زیر را در داخل آن قرار می دهیم:
+
+```c++
+#include <ros/ros.h>
+#include <interactive_markers/interactive_marker_server.h>
+
+
+// This Fcn. will called when user make change about the marker in Rviz
+void processFeedback(
+    const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
+{
+  ROS_INFO_STREAM( feedback->marker_name << " is now at "
+      << feedback->pose.position.x << ", " << feedback->pose.position.y
+      << ", " << feedback->pose.position.z );
+}
+
+
+
+// Main Fcn.
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "simple_marker"); // Initiate A Node
+
+
+  // Create A Server Marker
+  interactive_markers::InteractiveMarkerServer server("simple_marker");
+
+
+  // Make An Interactive Marker
+  visualization_msgs::InteractiveMarker int_marker;
+  int_marker.header.frame_id = "base_link";
+  int_marker.header.stamp=ros::Time::now();
+  int_marker.name = "my_marker";
+  int_marker.description = "Simple 1-DOF Control";
+
+
+  visualization_msgs::Marker box_marker;
+  box_marker.type = visualization_msgs::Marker::CUBE; // Cube
+  box_marker.scale.x = 0.45;
+  box_marker.scale.y = 0.45;
+  box_marker.scale.z = 0.45;
+  box_marker.color.r = 0.5;
+  box_marker.color.g = 0.5;
+  box_marker.color.b = 0.5;
+  box_marker.color.a = 1.0;
+
+
+  // Create A Control
+  visualization_msgs::InteractiveMarkerControl box_control;
+  box_control.always_visible = true;
+  box_control.markers.push_back( box_marker );
+
+
+  int_marker.controls.push_back( box_control );
+  visualization_msgs::InteractiveMarkerControl rotate_control;
+  rotate_control.name = "move_x";
+  rotate_control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_AXIS; // Constrain
+
+
+  int_marker.controls.push_back(rotate_control);
+  server.insert(int_marker, &processFeedback);
+  server.applyChanges();
+  ros::spin();
+}
+```
+
+در فایل CMakeList.txt نیز کد زیر را قرار می دهیم:
+
+```
+add_executable(simple_interactive_marker src/simple_interactive_marker.cpp)
+target_link_libraries(simple_interactive_marker ${catkin_LIBRARIES})
+```
+
+حتما در لیست depencyها interactive_markers را قرار دهید:
+
+```
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  visualization_msgs
+  interactive_markers
+)
+```
+
+در ادامه برنامه را اجرا می کنیم:
+
+```bash
+$ roscore
+$ rosrun using_markers simple_interactive_marker
+$ rviz
+```
+
+خروجی به شکل زیر خواهد بود:
+
+![خروجی](image-19.png)
+
+در برنامه rviz حتما فیکس فریم را بر روی base_link قرار دهید. مشاهده می شود که با جابجا کردن مارکر، تغییران آن در ترمینال مربوط به سرور چاپ می شود. همین مارکر می خواهیم با پایتون ایجاد کنیم. در پوشه اصلی پکیج یک دایرکتوری با نام scripts ایجاد می کنیم و در داخل آن یک فایل پایتون با نام simple_interactive_marker.py ایجاد کرده و به آن قابلیت اجرایی می دهیم. داخل فایل پایتون کد زیر را قرار می دهیم:
+
+```py
+#!/usr/bin/env python3
+import rospy
+from interactive_markers.interactive_marker_server import *
+from visualization_msgs.msg import *
+
+
+# This Fcn. will called when user make change about the marker in Rviz
+def processFeedback(feedback):
+    p = feedback.pose.position
+    print(feedback.marker_name+" is now at "+str(p.x)+", "+str(p.y)+", "+str(p.z))
+
+
+# Main
+if __name__=="__main__":
+    rospy.init_node("simple_marker") # Initiate Node
+    server = InteractiveMarkerServer("simple_marker") # Creater A Marker Server
+
+    # Make Marker
+    int_marker = InteractiveMarker()
+    int_marker.header.frame_id = "base_link"
+    int_marker.name = "my_marker"
+    int_marker.description = "Simple 1-DOF Control"
+
+
+    box_marker = Marker()
+    box_marker.type = Marker.CUBE
+    box_marker.scale.x = 0.45
+    box_marker.scale.y = 0.45
+    box_marker.scale.z = 0.45
+    box_marker.color.r = 0.0
+    box_marker.color.g = 0.5
+    box_marker.color.b = 0.5
+    box_marker.color.a = 1.0
+
+
+    box_control = InteractiveMarkerControl()
+    box_control.always_visible = True
+    box_control.markers.append( box_marker )
+
+
+    int_marker.controls.append( box_control )
+
+
+    rotate_control = InteractiveMarkerControl()
+    rotate_control.name = "move_x"
+    rotate_control.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
+    int_marker.controls.append(rotate_control);
+    server.insert(int_marker, processFeedback)
+    server.applyChanges()
+    rospy.spin()
+```
+
+خروجی این برنامه مشابه نسخه سی پلاس پلاس آن خواهد بود. (توجه شود که rospy باید به جمع پیش نیاز ها اضافه شود.)
+تا به اینجای کار ما مارکرهایی با درجه آزادی محدود ایجاد کردیم در حالیکه دست ما برای ایجاد مارکرها بسیار باز است. با کمک کامند زیر می توانیم لیست برخی از این درجه های آزاد مختلف را مشاهده نماییم:
+
+```bash
+$ roscore
+$ rosrun interactive_marker_tutorials basic_controls
+$ rviz
+```
+
+در بخش فیکس فریم، بر روی base_link تنظیم شود (دو فریم دیگر مربوط به مکعب چرخنده و متحرک می باشد) برای دسترسی به فایل پایتون این برنامه کافی است به آدرس زیر بروید:
+
+```
+/opt/ros/noetic/lib/interactive_marker_tutorials/basic_controls.py
+```
+
+که می توانید هر کدام از مارکر ها را خودتان تفسیر کنید. نسخه سی پلاس پلاس هم در فایل ضمیمه قرار گرفته است که می توانید مشاهده و تحلیل کنید (اگر نیاز به این مارکرها شد بیا مطالعه کن)
+
+صورت مشکل: نکته عجیب در مورد این برنامه که در ros نسخه ملودیک کار داد ولی در نسخه نئوتیک کار نداد!
+
+حل مشکل: در نسخه نئوتیک در بخش frame_id از / استفاده نکنیم مشکل حل می شود:
+
+```py
+marker.header.frame_id = "my_frame"; // Pose Origin
+```
+
+برای مشاهده قدرت این مارکرها برنامه زیر را اجرا کنید:
+
+```bash
+$ roscore
+$ rosrun interactive_marker_tutorials pong
+$ rviz
+```
+
+متغیر fixed_frame بر روی base_link تنظیم شود. خروجی به شکل زیر خواهد بود:
+
+البته همانگونه که پیش تر هم ذکر شد ما برای شبیه سازی از ابزار حرفه ای تری به نام Gazebo بهره خواهیم برد و از پکیج rviz صرفا برای شبیه سازی داده ها استفاده خواهیم کرد.
