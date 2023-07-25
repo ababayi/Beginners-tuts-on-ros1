@@ -3259,3 +3259,86 @@ $ rviz
 ![خروجی](image-20.png)
 
 البته همانگونه که پیش تر هم ذکر شد ما برای شبیه سازی از ابزار حرفه ای تری به نام Gazebo بهره خواهیم برد و از پکیج rviz صرفا برای شبیه سازی داده ها استفاده خواهیم کرد.
+
+## شبیه سازی ربات با کمک urdf
+
+برای اینکه بخواهیم ربات را در داخل ROS شبیه سازی کنیم نیاز است تا با فایل های urdf که در آن ربات را توصیف می کنیم، آشنا شوید. قبل آشنایی با این فایل ها لازم است بدانیم که هر ربات از تعدادی لینک (link) و جوینت (Joint) تشکیل شده است:
+
+![ساختار کلی شبیه سازی ربات](image-21.png)
+
+توجه شود که فقط ربات های سری را می توان با فایل urdf تعریف کرد و برای ربات های موازی باید از روش دیگر بهره برد. در ادامه قصد داریم تا یک ربات را با فایل urdf ایجاد کنیم و آنرا با کمک rviz به نمایش بدهیم. برای اینکار در داخل فضای کاری کتیکن و در پوشه src یک پوشه برای فایل های urdf خود ایجاد می کنیم.
+
+```bash
+$ cd Desktop/catkin_ws/
+$ mkdir src/urdf
+$ touch src/urdf/myfirst.urdf
+```
+
+قبل از اینکه بخواهیم در مورد کدهای فایل myfirst.urdf توضیح بدهیم به سراغ بیان تگ های کاربردی فایل urdf می رویم. فایل های urdf یک نوع فایل xml هستند که با کمک تگ robot می توان یک ربات در داخل فایل ایجاد کرد:
+
+```xml
+<?xml version="1.0"?>
+<robot name="myfirst">
+  ... robot properties ...
+</robot>
+```
+
+در داخل تگ ربات حداقل به دو تگ برای بیان برای ظاهر ربات نیاز هست. تگ link و تگ joint. تگ link به شکل زیر است:
+
+```xml
+ <link name="my_link">
+   <inertial>
+     <origin xyz="0 0 0.5" rpy="0 0 0"/>
+     <mass value="1"/>
+     <inertia ixx="100"  ixy="0"  ixz="0" iyy="100" iyz="0" izz="100" />
+   </inertial>
+
+   <visual>
+     <origin xyz="0 0 0" rpy="0 0 0" />
+     <geometry>
+       <box size="1 1 1" />
+     </geometry>
+     <material name="Cyan">
+       <color rgba="0 1.0 1.0 1.0"/>
+     </material>
+   </visual>
+
+   <collision>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <cylinder radius="1" length="0.5"/>
+     </geometry>
+   </collision>
+ </link>
+```
+
+در تگ لینک همانگونه که نشان داده شده است می توانیم مشخصات اینرسی یک ربات، مشخصات ظاهری ربات (شکل، رنگ و اندازه) و ناحیه برخورد را تعریف کنیم. توجه شود که این ناحیه برخورد بهتر است شکل ساده ای داشته باشد تا محاسبات سبک تر شود. این ناحیه برخورد بدنه محاسباتی ربات در نظر گرفته می شود. برای مشاهده جزئیات بیشتر در مورد لینک ها می توانید به لینک زیر در داخل داکیومنت ROS مراجعه نمایید:
+
+http://wiki.ros.org/urdf/XML/link
+
+تک Joint هم به شکل زیر است (به شکل توجه شود):
+
+![جوینت](image-22.png)
+
+```xml
+ <joint name="my_joint" type="floating">
+    <origin xyz="0 0 1" rpy="0 0 3.1416"/>
+    <parent link="link1"/>
+    <child link="link2"/>
+
+    <calibration rising="0.0"/>
+    <dynamics damping="0.0" friction="0.0"/>
+    <limit effort="30" velocity="1.0" lower="-2.2" upper="0.7" />
+    <safety_controller k_velocity="10" k_position="15" soft_lower_limit="-2.0" soft_upper_limit="0.5" />
+ </joint>
+```
+
+با کمک همین مفاهیم می توانیم فایل myfirst.urdf را ایجاد نماییم. این فایل در دایرکتوری codes/urdf همین ریپازیتوری قرار گرفته است. برای اجرای این فایل می توانید لانچ فایل زیر بهره ببرید:
+
+```bash
+$ roslaunch urdf_tutorial display.launch model:=myfirst.urdf
+```
+
+خروجی به شکل زیر خواهد بود:
+
+![خروجی](image-23.png)
